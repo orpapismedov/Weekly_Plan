@@ -241,6 +241,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
         </div>
       ) : (
         <>
+          {/* Desktop Table View */}
           <div style={{ overflowX: 'auto' }}>
             <table className="daily-table">
               <thead>
@@ -475,6 +476,223 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="mobile-activities-cards">
+        {filteredActivities.map((activity) => (
+          <div key={activity.id} className="mobile-activity-card">
+            <div className="card-row">
+              <span className="card-label">משימה:</span>
+              <span className="card-value">{activity.taskName || activity.projectName || '-'}</span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">אווירי / קרקעי:</span>
+              <span className="card-value">
+                {activity.activityType === 'mant' ? 'מנ"ט' : activity.activityType === 'abroad' ? 'חו"ל' : activity.type}
+              </span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">פלטפורמה:</span>
+              <span className="card-value">
+                {activity.activityType === 'mant' ? '-' : activity.activityType === 'abroad' ? '-' : activity.platform}
+              </span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">שעות:</span>
+              <span className="card-value">{activity.startTime || '-'} - {activity.endTime || '-'}</span>
+            </div>
+            {activity.type === 'אווירי' && activity.estimatedTakeoffTime && (
+              <div className="card-row">
+                <span className="card-label">זמן המראה:</span>
+                <span className="card-value">{activity.estimatedTakeoffTime}</span>
+              </div>
+            )}
+            <div className="card-row">
+              <span className="card-label">מנהל:</span>
+              <span className="card-value">{activity.manager || activity.projectManager || '-'}</span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">מטיס פנים:</span>
+              <span className={`card-value ${shouldHighlightRed(activity, 'pilotInside') ? 'highlight-red' : ''}`}>
+                {activity.pilotInside || '-'}
+              </span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">מטיס חוץ:</span>
+              <span className={`card-value ${shouldHighlightRed(activity, 'pilotOutside') ? 'highlight-red' : ''}`}>
+                {activity.pilotOutside || '-'}
+              </span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">אחראי מנחת:</span>
+              <span className={`card-value ${shouldHighlightRed(activity, 'landingManager') ? 'highlight-red' : ''}`}>
+                {activity.landingManager || '-'}
+              </span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">טכנאי:</span>
+              <span className={`card-value ${shouldHighlightRed(activity, 'technician') ? 'highlight-red' : ''}`}>
+                {activity.technician || '-'}
+              </span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">נוספים:</span>
+              <span className="card-value">{activity.additional || '-'}</span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">POC:</span>
+              <span className="card-value">{activity.poc || activity.pocMant || '-'}</span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">אתר עבודה:</span>
+              <span className="card-value">{activity.workSite || '-'}</span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">מספר פרויקט:</span>
+              <span className="card-value">{activity.activityType === 'abroad' ? '-' : activity.projectNumber || '-'}</span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">רכבים:</span>
+              <span className="card-value">
+                {Array.isArray(activity.vehiclesList) 
+                  ? activity.vehiclesList.join(', ') 
+                  : activity.vehiclesList || '-'}
+              </span>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="card-actions">
+              {(!activity.activityType || activity.activityType === 'flight') && (
+                <button
+                  onClick={() => setExpandedActivity(expandedActivity === activity.id ? null : activity.id)}
+                  style={{
+                    background: expandedActivity === activity.id ? '#dc3545' : '#667eea'
+                  }}
+                >
+                  {expandedActivity === activity.id ? 'סגור' : 'הצג פרטים'}
+                </button>
+              )}
+              {isManager && (
+                <>
+                  <button
+                    onClick={() => {
+                      setEditingActivity(activity);
+                      setEditingActivityType(activity.activityType || 'flight');
+                    }}
+                    style={{ background: '#28a745' }}
+                    title='ערוך פעילות'
+                  >
+                    ✏️ ערוך
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('האם אתה בטוח שברצונך למחוק פעילות זו?')) {
+                        onDeleteActivity(activity.id);
+                      }
+                    }}
+                    style={{ background: '#dc3545' }}
+                    title='מחק פעילות'
+                  >
+                    🗑️ מחק
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Expanded Details for Mobile */}
+            {expandedActivity === activity.id && (
+              <div style={{ 
+                marginTop: '15px', 
+                padding: '15px', 
+                background: '#f0f8ff', 
+                borderRadius: '8px',
+                borderTop: '2px solid #667eea'
+              }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>תפוצה:</strong>
+                  <div>{activity.distribution || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>נוספים לתפוצה:</strong>
+                  <div>{activity.additionalDistribution || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>גורמים נוספים באתר:</strong>
+                  <div>{activity.additionalFactorsOnSite || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>מספר זנב:</strong>
+                  <div>{activity.tailNumber || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>מספר ישל"ט:</strong>
+                  <div>{activity.yaslatNumber || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>משגר:</strong>
+                  <div>{activity.launcher || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>מטע"ד:</strong>
+                  <div>{activity.matad || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>מנוע:</strong>
+                  <div>{activity.engine || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>מספר סחרן:</strong>
+                  <div>{activity.serialNumber || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>תדרים רלוונטיים:</strong>
+                  <div>{activity.relevantFrequencies || '-'}</div>
+                </div>
+                {activity.vehicleAssignments && activity.vehicleAssignments.length > 0 && (
+                  <div style={{ marginBottom: '10px' }}>
+                    <strong style={{ color: '#667eea' }}>שיבוץ רכבים:</strong>
+                    <div style={{ marginTop: '10px' }}>
+                      {activity.vehicleAssignments.map((va, i) => (
+                        <div key={i} style={{ 
+                          padding: '10px', 
+                          background: 'white', 
+                          borderRadius: '8px', 
+                          border: '2px solid #667eea',
+                          marginBottom: '8px'
+                        }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#667eea' }}>
+                            🚗 {va.vehicle}
+                          </div>
+                          {va.passengersOutbound && va.passengersOutbound.length > 0 && (
+                            <div style={{ marginBottom: '5px' }}>
+                              <span style={{ color: '#0066cc', fontWeight: 'bold' }}>הלוך: </span>
+                              <span style={{ fontSize: '14px' }}>{va.passengersOutbound.join(', ')}</span>
+                            </div>
+                          )}
+                          {va.passengersReturn && va.passengersReturn.length > 0 && (
+                            <div>
+                              <span style={{ color: '#ff9800', fontWeight: 'bold' }}>חזור: </span>
+                              <span style={{ fontSize: '14px' }}>{va.passengersReturn.join(', ')}</span>
+                            </div>
+                          )}
+                          {(!va.passengersOutbound || va.passengersOutbound.length === 0) && 
+                           (!va.passengersReturn || va.passengersReturn.length === 0) && (
+                            <div style={{ fontSize: '14px', color: '#999' }}>אין נוסעים</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <strong style={{ color: '#667eea' }}>הערות:</strong>
+                  <div>{activity.notes || '-'}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </>
   )}

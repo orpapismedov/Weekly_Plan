@@ -105,13 +105,15 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
 
   return (
     <div className="weekly-schedule">
-      <div className="week-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2>תכנית שבועית</h2>
-          <div className="week-number">שבוע {weekNumber}</div>
+      <div className="week-header" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <h2>תכנית שבועית</h2>
+            <div className="week-number">שבוע {weekNumber}</div>
+          </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
           <button
             onClick={() => setActivityTypeFilter('all')}
             style={{
@@ -205,7 +207,7 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                         <span className="activity-type">{activity.type}</span>
                       </div>
                       <div className="activity-info">
-                        <div><strong>משימה:</strong> {activity.taskName}</div>
+                        <div><strong>משימה:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.taskName}</span></div>
                         <div><strong>שעות:</strong> {activity.startTime} - {activity.endTime}</div>
                         <div><strong>מנהל:</strong> {activity.manager}</div>
                         {activity.pilotInside && (
@@ -271,7 +273,7 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                         <span style={{ fontWeight: 'bold', color: '#f59e0b' }}>מנ"ט</span>
                       </div>
                       <div className="activity-info">
-                        <div><strong>משימה:</strong> {activity.taskName}</div>
+                        <div><strong>משימה:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.taskName}</span></div>
                         {activity.pilotInside && (
                           <div><strong>מטיס פנים:</strong> {activity.pilotInside}</div>
                         )}
@@ -295,7 +297,7 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                         <span style={{ fontWeight: 'bold', color: '#10b981' }}>חו"ל</span>
                       </div>
                       <div className="activity-info">
-                        <div><strong>פרויקט:</strong> {activity.projectName}</div>
+                        <div><strong>פרויקט:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.projectName}</span></div>
                         {activity.pilotInside && (
                           <div><strong>מטיס פנים:</strong> {activity.pilotInside}</div>
                         )}

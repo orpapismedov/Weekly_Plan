@@ -301,7 +301,28 @@ function App() {
       {showPasswordPrompt && (
         <div className="modal-overlay" onClick={() => setShowPasswordPrompt(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <h3>הזן סיסמה למצב מנהל</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>הזן סיסמה למצב מנהל</h3>
+              <button 
+                onClick={() => setShowPasswordPrompt(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#999',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="סגור"
+              >
+                ✕
+              </button>
+            </div>
             <input
               type="password"
               placeholder="סיסמה"
