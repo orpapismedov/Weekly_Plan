@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 function FrequencyTable({ onClose, isManager }) {
   const [image, setImage] = useState(null);
@@ -35,26 +34,42 @@ function FrequencyTable({ onClose, isManager }) {
         return;
       }
 
+      // Check file size (limit to 1MB for Firestore)
+      if (file.size > 1024 * 1024) {
+        alert('גודל הקובץ חורג מ-1MB. נא להעלות תמונה קטנה יותר');
+        return;
+      }
+
       setLoading(true);
       try {
-        // Upload to Firebase Storage
-        const storageRef = ref(storage, 'frequencyTable/table.jpg');
-        await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(storageRef);
+        // Convert image to base64
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64String = reader.result;
+          
+          // Save base64 string to Firestore
+          await setDoc(doc(db, 'settings', 'frequencyTable'), {
+            imageUrl: base64String,
+            updatedAt: new Date().toISOString()
+          });
+          
+          setImagePreview(base64String);
+          setImage(file);
+          setLoading(false);
+        };
         
-        // Save URL to Firestore
-        await setDoc(doc(db, 'settings', 'frequencyTable'), {
-          imageUrl: downloadURL,
-          updatedAt: new Date().toISOString()
-        });
+        reader.onerror = () => {
+          console.error('Error reading file');
+          alert('שגיאה בקריאת הקובץ');
+          setLoading(false);
+        };
         
-        setImagePreview(downloadURL);
-        setImage(file);
+        reader.readAsDataURL(file);
       } catch (error) {
         console.error('Error uploading image:', error);
         alert('שגיאה בהעלאת התמונה');
+        setLoading(false);
       }
-      setLoading(false);
     }
   };
 
@@ -62,10 +77,6 @@ function FrequencyTable({ onClose, isManager }) {
     if (window.confirm('האם אתה בטוח שברצונך למחוק את התמונה?')) {
       setLoading(true);
       try {
-        // Delete from Firebase Storage
-        const storageRef = ref(storage, 'frequencyTable/table.jpg');
-        await deleteObject(storageRef);
-        
         // Delete from Firestore
         await deleteDoc(doc(db, 'settings', 'frequencyTable'));
         

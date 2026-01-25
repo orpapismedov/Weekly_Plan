@@ -281,7 +281,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                       {activity.activityType === 'mant' ? '-' : activity.activityType === 'abroad' ? '-' : activity.platform}
                     </span>
                   </td>
-                  <td>{activity.startTime || '-'} - {activity.endTime || '-'}</td>
+                  <td><span style={{ direction: 'ltr', display: 'inline-block' }}>{activity.startTime || '-'} - {activity.endTime || '-'}</span></td>
                   {filteredActivities.some(a => a.type === 'אווירי' && a.estimatedTakeoffTime) && (
                     <td>{activity.type === 'אווירי' && activity.estimatedTakeoffTime ? activity.estimatedTakeoffTime : '-'}</td>
                   )}
@@ -500,7 +500,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
             </div>
             <div className="card-row">
               <span className="card-label">שעות:</span>
-              <span className="card-value">{activity.startTime || '-'} - {activity.endTime || '-'}</span>
+              <span className="card-value" style={{ direction: 'ltr', display: 'inline-block' }}>{activity.startTime || '-'} - {activity.endTime || '-'}</span>
             </div>
             {activity.type === 'אווירי' && activity.estimatedTakeoffTime && (
               <div className="card-row">

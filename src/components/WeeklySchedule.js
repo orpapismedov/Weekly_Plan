@@ -10,8 +10,24 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
   const [selectedDay, setSelectedDay] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
   const [activityTypeFilter, setActivityTypeFilter] = useState('all'); // 'all', 'אווירי', 'קרקעי'
+  const [activityCategoryFilter, setActivityCategoryFilter] = useState('all'); // 'all', 'flight', 'mant', 'abroad'
+  const [platformFilter, setPlatformFilter] = useState('all'); // 'all' or specific platform
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
+
+  // Get all unique platforms from activities
+  const getAllPlatforms = () => {
+    const platforms = new Set();
+    days.forEach(day => {
+      activities[day].forEach(activity => {
+        if (activity.platform && activity.activityType !== 'mant' && activity.activityType !== 'abroad') {
+          platforms.add(activity.platform);
+        }
+      });
+    });
+    return Array.from(platforms).sort();
+  };
 
   // Function to get date for each day of the week based on weekNumber
   const getDateForDay = (dayName) => {
@@ -106,20 +122,20 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
   return (
     <div className="weekly-schedule">
       <div className="week-header" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <div>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+          <div style={{ textAlign: 'center' }}>
             <h2>תכנית שבועית</h2>
             <div className="week-number">שבוע {weekNumber}</div>
           </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', position: 'relative' }}>
           <button
-            onClick={() => setActivityTypeFilter('all')}
+            onClick={() => setShowFilterPanel(!showFilterPanel)}
             style={{
               padding: '10px 20px',
-              background: activityTypeFilter === 'all' ? '#667eea' : '#e0e0e0',
-              color: activityTypeFilter === 'all' ? 'white' : '#333',
+              background: '#667eea',
+              color: 'white',
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
@@ -128,40 +144,186 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
               transition: 'all 0.3s ease'
             }}
           >
-            הכל
+            🔍 סינון
           </button>
-          <button
-            onClick={() => setActivityTypeFilter('אווירי')}
-            style={{
-              padding: '10px 20px',
-              background: activityTypeFilter === 'אווירי' ? '#667eea' : '#e0e0e0',
-              color: activityTypeFilter === 'אווירי' ? 'white' : '#333',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            אווירי
-          </button>
-          <button
-            onClick={() => setActivityTypeFilter('קרקעי')}
-            style={{
-              padding: '10px 20px',
-              background: activityTypeFilter === 'קרקעי' ? '#667eea' : '#e0e0e0',
-              color: activityTypeFilter === 'קרקעי' ? 'white' : '#333',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            קרקעי
-          </button>
+          
+          {showFilterPanel && (
+            <div style={{
+              position: 'absolute',
+              top: '50px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'white',
+              border: '2px solid #667eea',
+              borderRadius: '12px',
+              padding: '20px',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+              zIndex: 1000,
+              minWidth: '400px',
+              maxWidth: '90vw'
+            }}>
+              <h3 style={{ marginBottom: '15px', color: '#667eea', textAlign: 'center' }}>אפשרויות סינון</h3>
+              
+              {/* סוג פעילות */}
+              <div style={{ marginBottom: '15px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>סוג פעילות:</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setActivityTypeFilter('all')}
+                    style={{
+                      padding: '8px 16px',
+                      background: activityTypeFilter === 'all' ? '#667eea' : '#e0e0e0',
+                      color: activityTypeFilter === 'all' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    הכל
+                  </button>
+                  <button
+                    onClick={() => setActivityTypeFilter('אווירי')}
+                    style={{
+                      padding: '8px 16px',
+                      background: activityTypeFilter === 'אווירי' ? '#667eea' : '#e0e0e0',
+                      color: activityTypeFilter === 'אווירי' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    אווירי
+                  </button>
+                  <button
+                    onClick={() => setActivityTypeFilter('קרקעי')}
+                    style={{
+                      padding: '8px 16px',
+                      background: activityTypeFilter === 'קרקעי' ? '#667eea' : '#e0e0e0',
+                      color: activityTypeFilter === 'קרקעי' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    קרקעי
+                  </button>
+                </div>
+              </div>
+              
+              {/* פעילות */}
+              <div style={{ marginBottom: '15px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>פעילות:</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setActivityCategoryFilter('all')}
+                    style={{
+                      padding: '8px 16px',
+                      background: activityCategoryFilter === 'all' ? '#667eea' : '#e0e0e0',
+                      color: activityCategoryFilter === 'all' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    הכל
+                  </button>
+                  <button
+                    onClick={() => setActivityCategoryFilter('flight')}
+                    style={{
+                      padding: '8px 16px',
+                      background: activityCategoryFilter === 'flight' ? '#667eea' : '#e0e0e0',
+                      color: activityCategoryFilter === 'flight' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    קו טיסה
+                  </button>
+                  <button
+                    onClick={() => setActivityCategoryFilter('mant')}
+                    style={{
+                      padding: '8px 16px',
+                      background: activityCategoryFilter === 'mant' ? '#667eea' : '#e0e0e0',
+                      color: activityCategoryFilter === 'mant' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    מנ"ט
+                  </button>
+                  <button
+                    onClick={() => setActivityCategoryFilter('abroad')}
+                    style={{
+                      padding: '8px 16px',
+                      background: activityCategoryFilter === 'abroad' ? '#667eea' : '#e0e0e0',
+                      color: activityCategoryFilter === 'abroad' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    חו"ל
+                  </button>
+                </div>
+              </div>
+              
+              {/* פלטפורמה */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>פלטפורמה:</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setPlatformFilter('all')}
+                    style={{
+                      padding: '8px 16px',
+                      background: platformFilter === 'all' ? '#667eea' : '#e0e0e0',
+                      color: platformFilter === 'all' ? 'white' : '#333',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    הכל
+                  </button>
+                  {getAllPlatforms().map(platform => (
+                    <button
+                      key={platform}
+                      onClick={() => setPlatformFilter(platform)}
+                      style={{
+                        padding: '8px 16px',
+                        background: platformFilter === platform ? '#667eea' : '#e0e0e0',
+                        color: platformFilter === platform ? 'white' : '#333',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {platform}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -180,15 +342,32 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
             </div>
             <div className="activities-list">
               {activities[day].filter(activity => {
+                // Filter by סוג פעילות (type)
+                // מנ"ט and חו"ל are considered both אווירי and קרקעי
+                let typeMatch = true;
                 if (activityTypeFilter === 'אווירי') {
-                  // Show מנ"ט and חו"ל along with אווירי activities
-                  return (activity.type === 'אווירי' && !activity.activityType) || 
-                         activity.activityType === 'mant' || 
-                         activity.activityType === 'abroad';
+                  typeMatch = activity.type === 'אווירי' || activity.activityType === 'mant' || activity.activityType === 'abroad';
                 } else if (activityTypeFilter === 'קרקעי') {
-                  return activity.type === 'קרקעי' && !activity.activityType;
+                  typeMatch = activity.type === 'קרקעי' || activity.activityType === 'mant' || activity.activityType === 'abroad';
                 }
-                return true;
+                
+                // Filter by פעילות (category)
+                let categoryMatch = true;
+                if (activityCategoryFilter === 'flight') {
+                  categoryMatch = !activity.activityType || activity.activityType === 'flight';
+                } else if (activityCategoryFilter === 'mant') {
+                  categoryMatch = activity.activityType === 'mant';
+                } else if (activityCategoryFilter === 'abroad') {
+                  categoryMatch = activity.activityType === 'abroad';
+                }
+                
+                // Filter by פלטפורמה (platform)
+                let platformMatch = true;
+                if (platformFilter !== 'all') {
+                  platformMatch = activity.platform === platformFilter;
+                }
+                
+                return typeMatch && categoryMatch && platformMatch;
               }).map(activity => (
                 <div 
                   key={activity.id} 
@@ -202,13 +381,11 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                 >
                   {activity.activityType === 'flight' || !activity.activityType ? (
                     <>
-                      <div className="activity-header">
-                        <span className="platform-badge">{activity.platform}</span>
-                        <span className="activity-type">{activity.type}</span>
-                      </div>
                       <div className="activity-info">
                         <div><strong>משימה:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.taskName}</span></div>
-                        <div><strong>שעות:</strong> {activity.startTime} - {activity.endTime}</div>
+                        <div><strong>פלטפורמה:</strong> {activity.platform}</div>
+                        <div><strong>סוג פעילות:</strong> {activity.type}</div>
+                        <div><strong>שעות:</strong> <span style={{ direction: 'ltr', display: 'inline-block' }}>{activity.startTime} - {activity.endTime}</span></div>
                         <div><strong>מנהל:</strong> {activity.manager}</div>
                         {activity.pilotInside && (
                           <div style={{ 

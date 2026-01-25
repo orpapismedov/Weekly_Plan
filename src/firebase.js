@@ -9,7 +9,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCzBLjLxQltCFRdF0nJYW0QcGpazFhienY",
   authDomain: "weeklyplan-2488f.firebaseapp.com",
   projectId: "weeklyplan-2488f",
-  storageBucket: "weeklyplan-2488f.firebasestorage.app",
+  storageBucket: "weeklyplan-2488f.appspot.com",
   messagingSenderId: "888786349194",
   appId: "1:888786349194:web:824a4ee74c7b790efdd173",
   measurementId: "G-FY6L8Y3G79"
