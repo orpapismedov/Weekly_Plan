@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import WeeklySchedule from './components/WeeklySchedule';
 import DailyPlan from './components/DailyPlan';
@@ -8,6 +8,32 @@ import MealsLink from './components/MealsLink';
 import AdditionalInfo from './components/AdditionalInfo';
 import FrequencyTable from './components/FrequencyTable';
 import { motion } from 'framer-motion';
+import { db } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+function getCurrentWeekNumber() {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const startDay = startOfYear.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Calculate days since start of year
+  const daysSinceStart = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+  
+  // Adjust for the first partial week
+  // If Jan 1 is not Sunday, count it as week 1
+  const adjustedDays = daysSinceStart + startDay;
+  
+  return Math.ceil((adjustedDays + 1) / 7);
+}
+
+function initializeWeekActivities() {
+  const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const activities = {};
+  days.forEach(day => {
+    activities[day] = [];
+  });
+  return activities;
+}
 
 function App() {
   const [viewMode, setViewMode] = useState('user'); // 'manager' or 'user'
@@ -18,15 +44,22 @@ function App() {
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [showFrequencyTable, setShowFrequencyTable] = useState(false);
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week, 1 = next week, 2 = week after
+  const [loading, setLoading] = useState(true);
   
-  // Load week data from localStorage or initialize
-  const loadWeekData = (offset) => {
+  // Load week data from Firebase or initialize
+  const loadWeekData = async (offset) => {
     const currentWeekNum = getCurrentWeekNumber();
     const weekNum = currentWeekNum + offset;
-    const stored = localStorage.getItem(`weekData_${weekNum}`);
     
-    if (stored) {
-      return JSON.parse(stored);
+    try {
+      const docRef = doc(db, 'weekData', `week_${weekNum}`);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return docSnap.data();
+      }
+    } catch (error) {
+      console.error('Error loading week data:', error);
     }
     
     return {
@@ -35,23 +68,51 @@ function App() {
     };
   };
   
-  const [weekData, setWeekData] = useState(() => loadWeekData(0));
+  const [weekData, setWeekData] = useState({
+    weekNumber: getCurrentWeekNumber(),
+    activities: initializeWeekActivities()
+  });
 
-  // Save to localStorage whenever weekData changes
-  React.useEffect(() => {
-    localStorage.setItem(`weekData_${weekData.weekNumber}`, JSON.stringify(weekData));
-  }, [weekData]);
+  // Load initial data from Firebase
+  useEffect(() => {
+    const initializeData = async () => {
+      setLoading(true);
+      const data = await loadWeekData(0);
+      setWeekData(data);
+      setLoading(false);
+    };
+    initializeData();
+  }, []);
+
+  // Save to Firebase whenever weekData changes
+  useEffect(() => {
+    const saveWeekData = async () => {
+      if (!loading && weekData.weekNumber) {
+        try {
+          const docRef = doc(db, 'weekData', `week_${weekData.weekNumber}`);
+          await setDoc(docRef, weekData);
+        } catch (error) {
+          console.error('Error saving week data:', error);
+        }
+      }
+    };
+    saveWeekData();
+  }, [weekData, loading]);
 
   // Ensure users always see current week
-  React.useEffect(() => {
-    if (viewMode === 'user' && currentWeekOffset !== 0) {
-      setCurrentWeekOffset(0);
-      setWeekData(loadWeekData(0));
-      setSelectedDay(null);
-    }
+  useEffect(() => {
+    const resetUserView = async () => {
+      if (viewMode === 'user' && currentWeekOffset !== 0) {
+        setCurrentWeekOffset(0);
+        const data = await loadWeekData(0);
+        setWeekData(data);
+        setSelectedDay(null);
+      }
+    };
+    resetUserView();
   }, [viewMode]);
 
-  // Persistent state for utility components
+  // Persistent state for utility components - Load from Firebase
   const [suppliers, setSuppliers] = useState([]);
   const [mealsLink, setMealsLink] = useState('');
   const [additionalInfoData, setAdditionalInfoData] = useState({
@@ -60,29 +121,95 @@ function App() {
     phoneNumbers: []
   });
 
-  function getCurrentWeekNumber() {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const startDay = startOfYear.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
-    // Calculate days since start of year
-    const daysSinceStart = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
-    
-    // Adjust for the first partial week
-    // If Jan 1 is not Sunday, count it as week 1
-    const adjustedDays = daysSinceStart + startDay;
-    
-    return Math.ceil((adjustedDays + 1) / 7);
-  }
+  // Load suppliers from Firebase
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'suppliers');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setSuppliers(docSnap.data().list || []);
+        }
+      } catch (error) {
+        console.error('Error loading suppliers:', error);
+      }
+    };
+    loadSuppliers();
+  }, []);
 
-  function initializeWeekActivities() {
-    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-    const activities = {};
-    days.forEach(day => {
-      activities[day] = [];
-    });
-    return activities;
-  }
+  // Save suppliers to Firebase
+  useEffect(() => {
+    const saveSuppliers = async () => {
+      if (!loading) {
+        try {
+          await setDoc(doc(db, 'settings', 'suppliers'), { list: suppliers });
+        } catch (error) {
+          console.error('Error saving suppliers:', error);
+        }
+      }
+    };
+    saveSuppliers();
+  }, [suppliers, loading]);
+
+  // Load meals link from Firebase
+  useEffect(() => {
+    const loadMealsLink = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'mealsLink');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setMealsLink(docSnap.data().url || '');
+        }
+      } catch (error) {
+        console.error('Error loading meals link:', error);
+      }
+    };
+    loadMealsLink();
+  }, []);
+
+  // Save meals link to Firebase
+  useEffect(() => {
+    const saveMealsLink = async () => {
+      if (!loading) {
+        try {
+          await setDoc(doc(db, 'settings', 'mealsLink'), { url: mealsLink });
+        } catch (error) {
+          console.error('Error saving meals link:', error);
+        }
+      }
+    };
+    saveMealsLink();
+  }, [mealsLink, loading]);
+
+  // Load additional info from Firebase
+  useEffect(() => {
+    const loadAdditionalInfo = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'additionalInfo');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setAdditionalInfoData(docSnap.data());
+        }
+      } catch (error) {
+        console.error('Error loading additional info:', error);
+      }
+    };
+    loadAdditionalInfo();
+  }, []);
+
+  // Save additional info to Firebase
+  useEffect(() => {
+    const saveAdditionalInfo = async () => {
+      if (!loading) {
+        try {
+          await setDoc(doc(db, 'settings', 'additionalInfo'), additionalInfoData);
+        } catch (error) {
+          console.error('Error saving additional info:', error);
+        }
+      }
+    };
+    saveAdditionalInfo();
+  }, [additionalInfoData, loading]);
 
   const handleAddActivity = (day, activity) => {
     setWeekData(prev => ({
@@ -120,15 +247,18 @@ function App() {
     setSelectedDay(day);
   };
 
-  const handleManagerModeClick = () => {
+  const handleManagerModeClick = async () => {
     if (viewMode === 'user') {
       setShowPasswordPrompt(true);
     } else {
       // When switching back to user mode, always reset to current week
       setViewMode('user');
       setCurrentWeekOffset(0);
-      setWeekData(loadWeekData(0));
+      setLoading(true);
+      const data = await loadWeekData(0);
+      setWeekData(data);
       setSelectedDay(null);
+      setLoading(false);
     }
   };
 
@@ -141,10 +271,13 @@ function App() {
     }
   };
 
-  const handleWeekChange = (offset) => {
+  const handleWeekChange = async (offset) => {
+    setLoading(true);
     setCurrentWeekOffset(offset);
-    setWeekData(loadWeekData(offset));
-    setSelectedDay(null); // Reset day selection when changing weeks
+    const data = await loadWeekData(offset);
+    setWeekData(data);
+    setSelectedDay(null);
+    setLoading(false);
   };
 
   return (
@@ -297,6 +430,17 @@ function App() {
           </button>
         </div>
       </header>
+
+      {loading && (
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          color: 'white',
+          fontSize: '18px'
+        }}>
+          <div style={{ marginBottom: '20px' }}>⏳ טוען נתונים...</div>
+        </div>
+      )}
 
       {showPasswordPrompt && (
         <div className="modal-overlay" onClick={() => setShowPasswordPrompt(false)}>
