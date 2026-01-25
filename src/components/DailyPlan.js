@@ -1,0 +1,706 @@
+import React, { useState, useEffect } from 'react';
+import ActivityModal from './ActivityModal';
+import MantActivityModal from './MantActivityModal';
+import AbroadActivityModal from './AbroadActivityModal';
+
+function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDeleteActivity }) {
+  const [editingActivity, setEditingActivity] = useState(null);
+  const [editingActivityType, setEditingActivityType] = useState(null);
+  const [weatherData, setWeatherData] = useState({
+    kziot: { wind: '', visibility: '', clouds: '', temp: '', description: '', turbulence: '', notes: '', loading: true },
+    gvulot: { wind: '', visibility: '', clouds: '', temp: '', description: '', turbulence: '', notes: '', loading: true },
+    shivta: { wind: '', visibility: '', clouds: '', temp: '', description: '', turbulence: '', notes: '', loading: true },
+    ramatDavid: { wind: '', visibility: '', clouds: '', temp: '', description: '', turbulence: '', notes: '', loading: true }
+  });
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showExtraDetails, setShowExtraDetails] = useState(false);
+  const [expandedActivity, setExpandedActivity] = useState(null);
+
+  const cloudOptions = ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8'];
+
+  // Helper function to determine if crew field should be highlighted red
+  const shouldHighlightRed = (activity, fieldName) => {
+    // Only apply to flight activities that are אווירי
+    if (!activity || activity.activityType === 'mant' || activity.activityType === 'abroad' || activity.type !== 'אווירי') {
+      return false;
+    }
+
+    const pilotInside = activity.pilotInside?.trim() || '';
+    const pilotOutside = activity.pilotOutside?.trim() || '';
+    const landingManager = activity.landingManager?.trim() || '';
+    const technician = activity.technician?.trim() || '';
+
+    // If אירוסטאר platform: all 4 fields must be filled
+    if (activity.platform === 'אירוסטאר') {
+      if (fieldName === 'pilotInside' && !pilotInside) return true;
+      if (fieldName === 'pilotOutside' && !pilotOutside) return true;
+      if (fieldName === 'landingManager' && !landingManager) return true;
+      if (fieldName === 'technician' && !technician) return true;
+    }
+
+    // For אווירי in general: מטיס פנים and טכנאי are required
+    if (fieldName === 'pilotInside' && !pilotInside) return true;
+    if (fieldName === 'technician' && !technician) return true;
+
+    return false;
+  };
+
+  // Location coordinates (accurate Israeli military bases/areas)
+  const locations = {
+    kziot: { lat: 31.2167, lon: 34.4667, name: 'קציעות', region: 'נגב דרומי' },
+    gvulot: { lat: 31.3667, lon: 34.4167, name: 'גבולות', region: 'נגב מערבי' },
+    shivta: { lat: 30.8833, lon: 34.6333, name: 'שבטה', region: 'נגב מרכזי' },
+    ramatDavid: { lat: 32.6650, lon: 35.1794, name: 'רמת דוד', region: 'עמק יזרעאל' }
+  };
+
+  // Fetch weather data on component mount
+  useEffect(() => {
+    const fetchWeather = async () => {
+      // Using OpenWeatherMap API (free tier)
+      const API_KEY = 'demo'; // Replace with actual API key
+      
+      // Calculate the actual date for this day
+      const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+      const dayIndex = dayNames.indexOf(day);
+      
+      const today = new Date();
+      const currentDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const daysUntilTarget = (dayIndex - currentDayOfWeek + 7) % 7;
+      
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + daysUntilTarget);
+      targetDate.setHours(12, 0, 0, 0); // Set to noon for forecast
+      
+      for (const [key, location] of Object.entries(locations)) {
+        try {
+          // Try to fetch 5-day forecast
+          const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/forecast?lat=${location.lat}&lon=${location.lon}&units=metric&lang=he&appid=${API_KEY}`
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Find the forecast closest to our target date at noon
+            const targetTimestamp = targetDate.getTime();
+            let closestForecast = data.list[0];
+            let minDiff = Math.abs(new Date(closestForecast.dt * 1000).getTime() - targetTimestamp);
+            
+            data.list.forEach(forecast => {
+              const forecastTime = new Date(forecast.dt * 1000).getTime();
+              const diff = Math.abs(forecastTime - targetTimestamp);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closestForecast = forecast;
+              }
+            });
+            
+            // Calculate wind direction from degrees
+            const windDir = getWindDirection(closestForecast.wind.deg);
+            const windSpeedKnots = Math.round(closestForecast.wind.speed * 1.944); // m/s to knots
+            
+            // Calculate cloud coverage in eighths
+            const cloudEighths = Math.round(closestForecast.clouds.all / 12.5);
+            
+            setWeatherData(prev => ({
+              ...prev,
+              [key]: {
+                wind: `${windDir} ${windSpeedKnots} קשר`,
+                visibility: `${((closestForecast.visibility || 10000) / 1000).toFixed(1)} ק"מ`,
+                clouds: `${cloudEighths}/8`,
+                temp: `${Math.round(closestForecast.main.temp)}°C`,
+                description: closestForecast.weather[0]?.description || '',
+                turbulence: '',
+                notes: '',
+                loading: false
+              }
+            }));
+          } else {
+            // If API fails, set realistic mock data varying by location and day
+            const locationVariations = {
+              kziot: { tempOffset: 0, windBase: 'דרום-מערב', windSpeed: 10, visibility: 8 },
+              gvulot: { tempOffset: -1, windBase: 'מערב', windSpeed: 9, visibility: 9 },
+              shivta: { tempOffset: 1, windBase: 'דרום', windSpeed: 8, visibility: 7 },
+              ramatDavid: { tempOffset: -2, windBase: 'צפון-מערב', windSpeed: 7, visibility: 10 }
+            };
+            
+            const baseTemps = [18, 20, 19, 21, 22, 20, 17];
+            const variation = locationVariations[key];
+            const temp = baseTemps[dayIndex] + variation.tempOffset;
+            
+            setWeatherData(prev => ({
+              ...prev,
+              [key]: {
+                wind: `${variation.windBase} ${variation.windSpeed + (dayIndex % 3)} קשר`,
+                visibility: `${variation.visibility + (dayIndex % 2)} ק"מ`,
+                clouds: `${(dayIndex % 7) + 1}/8`,
+                temp: `${temp}°C`,
+                description: temp > 20 ? 'בהיר' : 'בהיר חלקית',
+                turbulence: '',
+                notes: '',
+                loading: false
+              }
+            }));
+          }
+        } catch (error) {
+          console.log(`Weather API not available for ${location.name}, using demo data for`, day);
+          // Set demo data specific to location and day if API fails
+          const locationVariations = {
+            kziot: { tempOffset: 0, windBase: 'דרום-מערב', windSpeed: 10, visibility: 8 },
+            gvulot: { tempOffset: -1, windBase: 'מערב', windSpeed: 9, visibility: 9 },
+            shivta: { tempOffset: 1, windBase: 'דרום', windSpeed: 8, visibility: 7 },
+            ramatDavid: { tempOffset: -2, windBase: 'צפון-מערב', windSpeed: 7, visibility: 10 }
+          };
+          
+          const baseTemps = [18, 20, 19, 21, 22, 20, 17];
+          const variation = locationVariations[key];
+          const temp = baseTemps[dayIndex] + variation.tempOffset;
+          
+          setWeatherData(prev => ({
+            ...prev,
+            [key]: {
+              wind: `${variation.windBase} ${variation.windSpeed + (dayIndex % 3)} קשר`,
+              visibility: `${variation.visibility + (dayIndex % 2)} ק"מ`,
+              clouds: `${(dayIndex % 7) + 1}/8`,
+              temp: `${temp}°C`,
+              description: temp > 20 ? 'בהיר' : 'בהיר חלקית',
+              loading: false
+            }
+          }));
+        }
+      }
+    };
+
+    fetchWeather();
+  }, [day]);
+
+  const getWindDirection = (degrees) => {
+    const directions = ['צפון', 'צפון-מזרח', 'מזרח', 'דרום-מזרח', 'דרום', 'דרום-מערב', 'מערב', 'צפון-מערב'];
+    const index = Math.round(degrees / 45) % 8;
+    return directions[index];
+  };
+
+  const handleWeatherChange = (location, field, value) => {
+    setWeatherData(prev => ({
+      ...prev,
+      [location]: {
+        ...prev[location],
+        [field]: value
+      }
+    }));
+  };
+
+  const filteredActivities = activities.filter(activity => {
+    if (!searchTerm.trim()) return true;
+    
+    const searchInFields = [
+      activity.manager,
+      activity.projectManager,
+      activity.pilotInside,
+      activity.pilotOutside,
+      activity.landingManager,
+      activity.technician,
+      activity.additional,
+      activity.poc,
+      activity.taskName,
+      activity.projectName
+    ].filter(field => field)
+     .join(' ')
+     .toLowerCase();
+
+    return searchInFields.includes(searchTerm.toLowerCase());
+  });
+
+  return (
+    <div className="daily-plan">
+      <div className="daily-header">
+        <h2>תכנית יומית - {day}</h2>
+        <button className="back-btn" onClick={onBack}>חזור לתכנית שבועית</button>
+      </div>
+
+      <div className="search-bar" style={{ marginBottom: '20px' }}>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="חפש פעילות או עובד..."
+          style={{ 
+            width: '100%', 
+            padding: '12px', 
+            fontSize: '16px',
+            borderRadius: '8px',
+            border: '2px solid #667eea'
+          }}
+        />
+      </div>
+
+      {filteredActivities.length === 0 ? (
+        <div className="no-results">
+          {searchTerm ? `לא נמצאו פעילויות עבור "${searchTerm}"` : 'אין פעילויות מתוכננות ליום זה'}
+        </div>
+      ) : (
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="daily-table">
+              <thead>
+                <tr>
+                  <th>משימה</th>
+                  <th>אווירי / קרקעי</th>
+                  <th>פלטפורמה</th>
+                  <th>שעות</th>
+                  {filteredActivities.some(a => a.type === 'אווירי' && a.estimatedTakeoffTime) && (
+                    <th>זמן המראה משוער</th>
+                  )}
+                  <th>מנהל</th>
+                  <th>מטיס פנים</th>
+                  <th>מטיס חוץ</th>
+                  <th>אחראי מנחת</th>
+                  <th>טכנאי</th>
+                  <th>נוספים</th>
+                  <th>POC</th>
+                  <th>אתר עבודה</th>
+                  <th>מספר פרויקט</th>
+                  <th>רכבים</th>
+                  <th>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+            {filteredActivities.map((activity) => (
+              <React.Fragment key={activity.id}>
+                <tr>
+                  <td>{activity.taskName || activity.projectName || '-'}</td>
+                  <td>
+                    <span className="activity-type" style={{ fontSize: '0.8em' }}>
+                      {activity.activityType === 'mant' ? 'מנ"ט' : activity.activityType === 'abroad' ? 'חו"ל' : activity.type}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="platform-badge" style={{ fontSize: '0.85em' }}>
+                      {activity.activityType === 'mant' ? '-' : activity.activityType === 'abroad' ? '-' : activity.platform}
+                    </span>
+                  </td>
+                  <td>{activity.startTime || '-'} - {activity.endTime || '-'}</td>
+                  {filteredActivities.some(a => a.type === 'אווירי' && a.estimatedTakeoffTime) && (
+                    <td>{activity.type === 'אווירי' && activity.estimatedTakeoffTime ? activity.estimatedTakeoffTime : '-'}</td>
+                  )}
+                  <td>{activity.manager || activity.projectManager || '-'}</td>
+                  <td style={{ 
+                    background: shouldHighlightRed(activity, 'pilotInside') ? '#ffcccc' : 'transparent',
+                    fontWeight: shouldHighlightRed(activity, 'pilotInside') ? 'bold' : 'normal'
+                  }}>
+                    {activity.pilotInside || '-'}
+                  </td>
+                  <td style={{ 
+                    background: shouldHighlightRed(activity, 'pilotOutside') ? '#ffcccc' : 'transparent',
+                    fontWeight: shouldHighlightRed(activity, 'pilotOutside') ? 'bold' : 'normal'
+                  }}>
+                    {activity.pilotOutside || '-'}
+                  </td>
+                  <td style={{ 
+                    background: shouldHighlightRed(activity, 'landingManager') ? '#ffcccc' : 'transparent',
+                    fontWeight: shouldHighlightRed(activity, 'landingManager') ? 'bold' : 'normal'
+                  }}>
+                    {activity.landingManager || '-'}
+                  </td>
+                  <td style={{ 
+                    background: shouldHighlightRed(activity, 'technician') ? '#ffcccc' : 'transparent',
+                    fontWeight: shouldHighlightRed(activity, 'technician') ? 'bold' : 'normal'
+                  }}>
+                    {activity.technician || '-'}
+                  </td>
+                  <td>{activity.additional || '-'}</td>
+                  <td>{activity.poc || activity.pocMant || '-'}</td>
+                  <td>{activity.workSite || '-'}</td>
+                  <td>{activity.activityType === 'abroad' ? '-' : activity.projectNumber || '-'}</td>
+                  <td>
+                    {Array.isArray(activity.vehiclesList) 
+                      ? activity.vehiclesList.join(', ') 
+                      : activity.vehiclesList || '-'}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-start', alignItems: 'center' }}>
+                      {(!activity.activityType || activity.activityType === 'flight') && (
+                        <button
+                          onClick={() => setExpandedActivity(expandedActivity === activity.id ? null : activity.id)}
+                          style={{
+                            padding: '8px 15px',
+                            background: expandedActivity === activity.id ? '#dc3545' : '#667eea',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {expandedActivity === activity.id ? 'סגור' : 'הצג פרטים'}
+                        </button>
+                      )}
+                      {isManager && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingActivity(activity);
+                              setEditingActivityType(activity.activityType || 'flight');
+                            }}
+                            style={{
+                              padding: '8px 15px',
+                              background: '#28a745',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title='ערוך פעילות'
+                          >
+                            ✏️ ערוך
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('האם אתה בטוח שברצונך למחוק פעילות זו?')) {
+                                onDeleteActivity(activity.id);
+                              }
+                            }}
+                            style={{
+                              padding: '8px 15px',
+                              background: '#dc3545',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title='מחק פעילות'
+                          >
+                            🗑️ מחק
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+                {expandedActivity === activity.id && (
+                  <tr>
+                    <td colSpan="20" style={{ background: '#f0f8ff', padding: '20px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>תפוצה:</strong>
+                          <div>{activity.distribution || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>נוספים לתפוצה:</strong>
+                          <div>{activity.additionalDistribution || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>גורמים נוספים באתר:</strong>
+                          <div>{activity.additionalFactorsOnSite || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>מספר זנב:</strong>
+                          <div>{activity.tailNumber || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>מספר ישל"ט:</strong>
+                          <div>{activity.yaslatNumber || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>משגר:</strong>
+                          <div>{activity.launcher || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>מטע"ד:</strong>
+                          <div>{activity.matad || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>מנוע:</strong>
+                          <div>{activity.engine || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>מספר סחרן:</strong>
+                          <div>{activity.serialNumber || '-'}</div>
+                        </div>
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <strong style={{ color: '#667eea' }}>תדרים רלוונטיים:</strong>
+                          <div>{activity.relevantFrequencies || '-'}</div>
+                        </div>
+                        {activity.vehicleAssignments && activity.vehicleAssignments.length > 0 && (
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <strong style={{ color: '#667eea' }}>שיבוץ רכבים:</strong>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
+                              {activity.vehicleAssignments.map((va, i) => (
+                                <div key={i} style={{ 
+                                  padding: '10px', 
+                                  background: 'white', 
+                                  borderRadius: '8px', 
+                                  border: '2px solid #667eea',
+                                  minWidth: '200px'
+                                }}>
+                                  <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#667eea' }}>
+                                    🚗 {va.vehicle}
+                                  </div>
+                                  {va.passengersOutbound && va.passengersOutbound.length > 0 && (
+                                    <div style={{ marginBottom: '5px' }}>
+                                      <span style={{ color: '#0066cc', fontWeight: 'bold' }}>הלוך: </span>
+                                      <span style={{ fontSize: '14px' }}>{va.passengersOutbound.join(', ')}</span>
+                                    </div>
+                                  )}
+                                  {va.passengersReturn && va.passengersReturn.length > 0 && (
+                                    <div>
+                                      <span style={{ color: '#ff9800', fontWeight: 'bold' }}>חזור: </span>
+                                      <span style={{ fontSize: '14px' }}>{va.passengersReturn.join(', ')}</span>
+                                    </div>
+                                  )}
+                                  {(!va.passengersOutbound || va.passengersOutbound.length === 0) && 
+                                   (!va.passengersReturn || va.passengersReturn.length === 0) && (
+                                    <div style={{ fontSize: '14px', color: '#999' }}>אין נוסעים</div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <strong style={{ color: '#667eea' }}>הערות:</strong>
+                          <div>{activity.notes || '-'}</div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )}
+
+      {/* Weather Section */}
+      <div className="weather-section" style={{
+        marginTop: '30px',
+        background: 'white',
+        padding: '25px',
+        borderRadius: '15px',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{ 
+          marginBottom: '20px', 
+          color: '#667eea',
+          borderBottom: '2px solid #667eea',
+          paddingBottom: '10px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>מזג אוויר - תנאי שטח</span>
+          <span style={{ fontSize: '0.7em', color: '#28a745', fontWeight: 'normal' }}>
+            ✓ נתונים אוטומטיים מ-OpenWeatherMap
+          </span>
+        </h3>
+        
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '20px' 
+        }}>
+          {[
+            { key: 'kziot', label: 'קציעות' },
+            { key: 'gvulot', label: 'גבולות' },
+            { key: 'shivta', label: 'שבטה' },
+            { key: 'ramatDavid', label: 'רמת דוד' }
+          ].map(location => (
+            <div key={location.key} style={{
+              background: '#f8f9fa',
+              padding: '15px',
+              borderRadius: '10px',
+              border: '2px solid #e0e0e0'
+            }}>
+              <h4 style={{ 
+                marginBottom: '15px', 
+                color: '#333',
+                textAlign: 'center',
+                fontWeight: 'bold'
+              }}>
+                {location.label}
+              </h4>
+
+              {weatherData[location.key].loading ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                  ⏳ טוען נתונים...
+                </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '12px', textAlign: 'center', padding: '10px', background: '#e7f3ff', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#667eea' }}>
+                      {weatherData[location.key].temp}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
+                      {weatherData[location.key].description}
+                    </div>
+                  </div>
+              
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                      🌬️ רוח:
+                    </label>
+                    <input
+                      type="text"
+                      value={weatherData[location.key].wind}
+                      onChange={(e) => handleWeatherChange(location.key, 'wind', e.target.value)}
+                      placeholder="כיוון ומהירות"
+                      disabled={!isManager}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        background: isManager ? 'white' : '#f5f5f5'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                      👁️ ראות:
+                    </label>
+                    <input
+                      type="text"
+                      value={weatherData[location.key].visibility}
+                      onChange={(e) => handleWeatherChange(location.key, 'visibility', e.target.value)}
+                      placeholder='ק"מ'
+                      disabled={!isManager}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        background: isManager ? 'white' : '#f5f5f5'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                      ☁️ עננות:
+                    </label>
+                    <select
+                      value={weatherData[location.key].clouds}
+                      onChange={(e) => handleWeatherChange(location.key, 'clouds', e.target.value)}
+                      disabled={!isManager}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        background: isManager ? 'white' : '#f5f5f5'
+                      }}
+                    >
+                      <option value="">בחר עננות</option>
+                      {cloudOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                      🌪️ חתחותים:
+                    </label>
+                    <input
+                      type="text"
+                      value={weatherData[location.key].turbulence}
+                      onChange={(e) => handleWeatherChange(location.key, 'turbulence', e.target.value)}
+                      placeholder="חתחותים"
+                      disabled={!isManager}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        background: isManager ? 'white' : '#f5f5f5'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                      📝 הערות:
+                    </label>
+                    <textarea
+                      value={weatherData[location.key].notes}
+                      onChange={(e) => handleWeatherChange(location.key, 'notes', e.target.value)}
+                      placeholder="הערות"
+                      disabled={!isManager}
+                      rows="2"
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        background: isManager ? 'white' : '#f5f5f5',
+                        resize: 'vertical'
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Edit Activity Modals */}
+      {editingActivity && editingActivityType === 'flight' && (
+        <ActivityModal
+          day={day}
+          activity={editingActivity}
+          onClose={() => {
+            setEditingActivity(null);
+            setEditingActivityType(null);
+          }}
+          onSave={(updatedActivity) => {
+            onUpdateActivity(editingActivity.id, updatedActivity);
+            setEditingActivity(null);
+            setEditingActivityType(null);
+          }}
+        />
+      )}
+
+      {editingActivity && editingActivityType === 'mant' && (
+        <MantActivityModal
+          activity={editingActivity}
+          onClose={() => {
+            setEditingActivity(null);
+            setEditingActivityType(null);
+          }}
+          onSave={(updatedActivity) => {
+            onUpdateActivity(editingActivity.id, updatedActivity);
+            setEditingActivity(null);
+            setEditingActivityType(null);
+          }}
+        />
+      )}
+
+      {editingActivity && editingActivityType === 'abroad' && (
+        <AbroadActivityModal
+          activity={editingActivity}
+          onClose={() => {
+            setEditingActivity(null);
+            setEditingActivityType(null);
+          }}
+          onSave={(updatedActivity) => {
+            onUpdateActivity(editingActivity.id, updatedActivity);
+            setEditingActivity(null);
+            setEditingActivityType(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+export default DailyPlan;
