@@ -40,11 +40,17 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
     // Calculate the offset in weeks from current week
     const weekOffset = weekNumber - currentWeekNumber;
     
-    // Calculate days until target day in the target week
-    const daysUntilTarget = (dayIndex - currentDayOfWeek + 7) % 7 + (weekOffset * 7);
+    // Calculate the start of the current week (Sunday)
+    const startOfCurrentWeek = new Date(today);
+    startOfCurrentWeek.setDate(today.getDate() - currentDayOfWeek);
     
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + daysUntilTarget);
+    // Calculate the start of the target week
+    const startOfTargetWeek = new Date(startOfCurrentWeek);
+    startOfTargetWeek.setDate(startOfCurrentWeek.getDate() + (weekOffset * 7));
+    
+    // Calculate the target date by adding the day index
+    const targetDate = new Date(startOfTargetWeek);
+    targetDate.setDate(startOfTargetWeek.getDate() + dayIndex);
     
     const day = String(targetDate.getDate()).padStart(2, '0');
     const month = String(targetDate.getMonth() + 1).padStart(2, '0');
@@ -103,11 +109,22 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
     }
   };
 
-  const handleSave = (activity) => {
+  const handleSave = (activity, selectedDays = null) => {
     if (editingActivity) {
       onUpdateActivity(selectedDay, editingActivity.id, activity);
     } else {
-      onAddActivity(selectedDay, activity);
+      // If selectedDays is provided (abroad activity with multiple days)
+      if (selectedDays && selectedDays.length > 0) {
+        selectedDays.forEach(day => {
+          const activityForDay = {
+            ...activity,
+            id: Date.now() + Math.random() // Unique ID for each day
+          };
+          onAddActivity(day, activityForDay);
+        });
+      } else {
+        onAddActivity(selectedDay, activity);
+      }
     }
     setSelectedActivityType(null);
     setEditingActivity(null);
@@ -333,11 +350,24 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
             key={day} 
             className="day-column"
             onClick={() => onDayClick(day)}
+            style={{ position: 'relative' }}
           >
-            <div className="day-header">
+            <div className="day-header" style={{ position: 'relative', cursor: 'pointer' }}>
               <div>{day}</div>
               <div style={{ fontSize: '0.85em', marginTop: '4px' }}>
                 {getDateForDay(day)}
+              </div>
+              <div style={{
+                marginTop: '8px',
+                padding: '4px 10px',
+                background: 'rgba(255, 255, 255, 0.25)',
+                borderRadius: '6px',
+                fontSize: '0.7em',
+                fontWeight: '500',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                letterSpacing: '0.3px'
+              }}>
+                לחץ לפירוט
               </div>
             </div>
             <div className="activities-list">
@@ -382,8 +412,23 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                   {activity.activityType === 'flight' || !activity.activityType ? (
                     <>
                       <div className="activity-info">
+                        <div style={{ marginBottom: '8px', textAlign: 'center' }}>
+                          <strong>פלטפורמה: </strong>
+                          <span style={{ 
+                            background: 'linear-gradient(135deg, #667eea, #764ba2)', 
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontWeight: 'bold',
+                            display: 'inline-block'
+                          }}>
+                            {activity.platform}
+                          </span>
+                        </div>
                         <div><strong>משימה:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.taskName}</span></div>
-                        <div><strong>פלטפורמה:</strong> {activity.platform}</div>
+                        {activity.projectName && (
+                          <div><strong>פרויקט:</strong> {activity.projectName}</div>
+                        )}
                         <div><strong>סוג פעילות:</strong> {activity.type}</div>
                         <div><strong>שעות:</strong> <span style={{ direction: 'ltr', display: 'inline-block' }}>{activity.startTime} - {activity.endTime}</span></div>
                         <div><strong>מנהל:</strong> {activity.manager}</div>
@@ -451,6 +496,9 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                       </div>
                       <div className="activity-info">
                         <div><strong>משימה:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.taskName}</span></div>
+                        {activity.projectName && (
+                          <div><strong>פרויקט:</strong> {activity.projectName}</div>
+                        )}
                         {activity.pilotInside && (
                           <div><strong>מטיס פנים:</strong> {activity.pilotInside}</div>
                         )}
@@ -559,6 +607,7 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
       {selectedActivityType === 'abroad' && (
         <AbroadActivityModal
           activity={editingActivity}
+          selectedDay={selectedDay}
           onSave={handleSave}
           onClose={handleCloseModal}
         />

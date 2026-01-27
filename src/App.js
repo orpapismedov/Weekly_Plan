@@ -7,6 +7,7 @@ import Suppliers from './components/Suppliers';
 import MealsLink from './components/MealsLink';
 import AdditionalInfo from './components/AdditionalInfo';
 import FrequencyTable from './components/FrequencyTable';
+import PreviousWeeks from './components/PreviousWeeks';
 import { motion } from 'framer-motion';
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -26,6 +27,32 @@ function getCurrentWeekNumber() {
   return Math.ceil((adjustedDays + 1) / 7);
 }
 
+// Check if it's past Friday 10:00 AM Israel time
+function isPastFridayRollover() {
+  const now = new Date();
+  // Convert to Israel time (UTC+2 or UTC+3 depending on DST)
+  const israelTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  
+  const day = israelTime.getDay(); // 0 = Sunday, 5 = Friday
+  const hours = israelTime.getHours();
+  const minutes = israelTime.getMinutes();
+  
+  // If it's Friday (5) and past 10:00 AM, or if it's Saturday (6), return true
+  if (day === 5 && (hours > 10 || (hours === 10 && minutes >= 0))) {
+    return true;
+  }
+  if (day === 6) {
+    return true;
+  }
+  
+  return false;
+}
+
+// Get the effective week offset considering Friday rollover
+function getEffectiveWeekOffset(offset) {
+  return isPastFridayRollover() ? offset + 1 : offset;
+}
+
 function initializeWeekActivities() {
   const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
   const activities = {};
@@ -43,13 +70,15 @@ function App() {
   const [showMealsLink, setShowMealsLink] = useState(false);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [showFrequencyTable, setShowFrequencyTable] = useState(false);
+  const [showPreviousWeeks, setShowPreviousWeeks] = useState(false);
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week, 1 = next week, 2 = week after
   const [loading, setLoading] = useState(true);
   
   // Load week data from Firebase or initialize
   const loadWeekData = async (offset) => {
     const currentWeekNum = getCurrentWeekNumber();
-    const weekNum = currentWeekNum + offset;
+    const effectiveOffset = getEffectiveWeekOffset(offset);
+    const weekNum = currentWeekNum + effectiveOffset;
     
     try {
       const docRef = doc(db, 'weekData', `week_${weekNum}`);
@@ -346,6 +375,23 @@ function App() {
           </div>
         <div className="mode-toggle">
           <button 
+            onClick={() => setShowPreviousWeeks(true)}
+            style={{
+              marginLeft: '10px',
+              padding: '10px 20px',
+              background: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              minWidth: '180px'
+            }}
+          >
+            שבועות קודמים
+          </button>
+          <button 
             onClick={() => setShowFrequencyTable(true)}
             style={{
               marginLeft: '10px',
@@ -615,6 +661,13 @@ function App() {
         <FrequencyTable 
           isManager={viewMode === 'manager'} 
           onClose={() => setShowFrequencyTable(false)}
+        />
+      )}
+
+      {showPreviousWeeks && (
+        <PreviousWeeks 
+          isManager={viewMode === 'manager'} 
+          onClose={() => setShowPreviousWeeks(false)}
         />
       )}
       </div>

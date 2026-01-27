@@ -5,6 +5,7 @@ function MantActivityModal({ activity, onClose, onSave }) {
     id: activity?.id || Date.now(),
     activityType: 'mant',
     taskName: activity?.taskName || '',
+    projectName: activity?.projectName || '',
     landingManager: activity?.landingManager || '',
     pilotInside: activity?.pilotInside || '',
     pilotOutside: activity?.pilotOutside || '',
@@ -37,6 +38,23 @@ function MantActivityModal({ activity, onClose, onSave }) {
               onChange={(e) => setFormData({ ...formData, taskName: e.target.value })}
               placeholder='לדוגמה: תחזוקת מערכת X'
               required
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          <div className="form-group" style={{ marginTop: '15px' }}>
+            <label>שם פרויקט:</label>
+            <input
+              type="text"
+              value={formData.projectName}
+              onChange={(e) => setFormData({ ...formData, projectName: e.target.value })}
+              placeholder='שם הפרויקט'
               style={{
                 width: '100%',
                 padding: '10px',

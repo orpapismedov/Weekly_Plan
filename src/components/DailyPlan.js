@@ -16,8 +16,15 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
   const [searchTerm, setSearchTerm] = useState('');
   const [showExtraDetails, setShowExtraDetails] = useState(false);
   const [expandedActivity, setExpandedActivity] = useState(null);
+  const [vehiclePopupActivity, setVehiclePopupActivity] = useState(null);
+  const [expandedVehicles, setExpandedVehicles] = useState(null);
 
   const cloudOptions = ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8'];
+
+  // Scroll to top when DailyPlan opens (for mobile)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, []);
 
   // Helper function to determine if crew field should be highlighted red
   const shouldHighlightRed = (activity, fieldName) => {
@@ -259,8 +266,8 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                   <th>אחראי מנחת</th>
                   <th>טכנאי</th>
                   <th>נוספים</th>
-                  <th>POC</th>
                   <th>אתר עבודה</th>
+                  <th>שם פרויקט</th>
                   <th>מספר פרויקט</th>
                   <th>רכבים</th>
                   <th>פעולות</th>
@@ -272,7 +279,18 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                 <tr>
                   <td>{activity.taskName || activity.projectName || '-'}</td>
                   <td>
-                    <span className="activity-type" style={{ fontSize: '0.8em' }}>
+                    <span className="activity-type" style={{ 
+                      fontSize: '0.8em',
+                      background: activity.activityType === 'mant' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 
+                                  activity.activityType === 'abroad' ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                                  activity.type === 'אווירי' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' :
+                                  'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                      color: 'white',
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontWeight: '600',
+                      display: 'inline-block'
+                    }}>
                       {activity.activityType === 'mant' ? 'מנ"ט' : activity.activityType === 'abroad' ? 'חו"ל' : activity.type}
                     </span>
                   </td>
@@ -311,13 +329,49 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                     {activity.technician || '-'}
                   </td>
                   <td>{activity.additional || '-'}</td>
-                  <td>{activity.poc || activity.pocMant || '-'}</td>
                   <td>{activity.workSite || '-'}</td>
+                  <td>{activity.projectName || '-'}</td>
                   <td>{activity.activityType === 'abroad' ? '-' : activity.projectNumber || '-'}</td>
                   <td>
-                    {Array.isArray(activity.vehiclesList) 
-                      ? activity.vehiclesList.join(', ') 
-                      : activity.vehiclesList || '-'}
+                    {activity.vehicleAssignments && activity.vehicleAssignments.length > 0 ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                        {Array.isArray(activity.vehiclesList) 
+                          ? activity.vehiclesList.map((vehicle, idx) => (
+                              <span
+                                key={idx}
+                                onClick={() => setExpandedVehicles(expandedVehicles === activity.id ? null : activity.id)}
+                                style={{
+                                  color: '#667eea',
+                                  cursor: 'pointer',
+                                  textDecoration: 'underline',
+                                  fontWeight: '600'
+                                }}
+                                title="לחץ לצפייה בשיבוץ"
+                              >
+                                {vehicle}{idx < activity.vehiclesList.length - 1 ? ', ' : ''}
+                              </span>
+                            ))
+                          : (
+                              <span
+                                onClick={() => setExpandedVehicles(expandedVehicles === activity.id ? null : activity.id)}
+                                style={{
+                                  color: '#667eea',
+                                  cursor: 'pointer',
+                                  textDecoration: 'underline',
+                                  fontWeight: '600'
+                                }}
+                                title="לחץ לצפייה בשיבוץ"
+                              >
+                                {activity.vehiclesList}
+                              </span>
+                            )
+                        }
+                      </div>
+                    ) : (
+                      Array.isArray(activity.vehiclesList) 
+                        ? activity.vehiclesList.join(', ') 
+                        : activity.vehiclesList || '-'
+                    )}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-start', alignItems: 'center' }}>
@@ -384,6 +438,47 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                     </div>
                   </td>
                 </tr>
+                {expandedVehicles === activity.id && activity.vehicleAssignments && activity.vehicleAssignments.length > 0 && (
+                  <tr>
+                    <td colSpan="20" style={{ background: '#f0f8ff', padding: '20px', borderTop: '3px solid #667eea' }}>
+                      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                        <strong style={{ color: '#667eea', fontSize: '18px' }}>🚗 שיבוץ רכבים</strong>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'center' }}>
+                        {activity.vehicleAssignments.map((va, i) => (
+                          <div key={i} style={{ 
+                            padding: '15px', 
+                            background: 'white', 
+                            borderRadius: '12px', 
+                            border: '2px solid #667eea',
+                            minWidth: '250px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                          }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#667eea', fontSize: '16px' }}>
+                              🚗 {va.vehicle}
+                            </div>
+                            {va.passengersOutbound && va.passengersOutbound.length > 0 && (
+                              <div style={{ marginBottom: '8px', padding: '8px', background: '#f0f8ff', borderRadius: '6px' }}>
+                                <span style={{ color: '#0066cc', fontWeight: 'bold' }}>➡️ הלוך: </span>
+                                <span>{va.passengersOutbound.join(', ')}</span>
+                              </div>
+                            )}
+                            {va.passengersReturn && va.passengersReturn.length > 0 && (
+                              <div style={{ padding: '8px', background: '#fff8f0', borderRadius: '6px' }}>
+                                <span style={{ color: '#ff9800', fontWeight: 'bold' }}>⬅️ חזור: </span>
+                                <span>{va.passengersReturn.join(', ')}</span>
+                              </div>
+                            )}
+                            {(!va.passengersOutbound || va.passengersOutbound.length === 0) && 
+                             (!va.passengersReturn || va.passengersReturn.length === 0) && (
+                              <div style={{ color: '#999', fontStyle: 'italic', padding: '8px' }}>אין נוסעים משוייכים</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {expandedActivity === activity.id && (
                   <tr>
                     <td colSpan="20" style={{ background: '#f0f8ff', padding: '20px' }}>
@@ -391,6 +486,10 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         <div>
                           <strong style={{ color: '#667eea' }}>תפוצה:</strong>
                           <div>{activity.distribution || '-'}</div>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#667eea' }}>POC:</strong>
+                          <div>{activity.poc || activity.pocMant || '-'}</div>
                         </div>
                         <div>
                           <strong style={{ color: '#667eea' }}>נוספים לתפוצה:</strong>
@@ -424,12 +523,12 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                           <strong style={{ color: '#667eea' }}>מספר סחרן:</strong>
                           <div>{activity.serialNumber || '-'}</div>
                         </div>
-                        <div style={{ gridColumn: '1 / -1' }}>
+                        <div>
                           <strong style={{ color: '#667eea' }}>תדרים רלוונטיים:</strong>
                           <div>{activity.relevantFrequencies || '-'}</div>
                         </div>
                         {activity.vehicleAssignments && activity.vehicleAssignments.length > 0 && (
-                          <div style={{ gridColumn: '1 / -1' }}>
+                          <div>
                             <strong style={{ color: '#667eea' }}>שיבוץ רכבים:</strong>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
                               {activity.vehicleAssignments.map((va, i) => (
@@ -464,7 +563,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                             </div>
                           </div>
                         )}
-                        <div style={{ gridColumn: '1 / -1' }}>
+                        <div>
                           <strong style={{ color: '#667eea' }}>הערות:</strong>
                           <div>{activity.notes || '-'}</div>
                         </div>
@@ -484,7 +583,12 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
           <div key={activity.id} className="mobile-activity-card">
             <div className="card-row">
               <span className="card-label">משימה:</span>
-              <span className="card-value">{activity.taskName || activity.projectName || '-'}</span>
+              <span className="card-value">
+                <div>{activity.taskName || activity.projectName || '-'}</div>
+                {activity.taskName && activity.projectName && (
+                  <div style={{ fontSize: '0.9em', color: '#666', marginTop: '2px' }}>({activity.projectName})</div>
+                )}
+              </span>
             </div>
             <div className="card-row">
               <span className="card-label">אווירי / קרקעי:</span>
@@ -555,11 +659,64 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
             <div className="card-row">
               <span className="card-label">רכבים:</span>
               <span className="card-value">
-                {Array.isArray(activity.vehiclesList) 
-                  ? activity.vehiclesList.join(', ') 
+                {Array.isArray(activity.vehiclesList) && activity.vehiclesList.length > 0
+                  ? activity.vehiclesList.map((vehicle, idx) => (
+                      <span key={idx}>
+                        <span
+                          onClick={() => setExpandedVehicles(expandedVehicles === activity.id ? null : activity.id)}
+                          style={{ cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline' }}
+                        >
+                          {vehicle}
+                        </span>
+                        {idx < activity.vehiclesList.length - 1 && ', '}
+                      </span>
+                    ))
                   : activity.vehiclesList || '-'}
               </span>
             </div>
+            
+            {/* Expanded Vehicle Assignments for Mobile */}
+            {expandedVehicles === activity.id && activity.vehicleAssignments && activity.vehicleAssignments.length > 0 && (
+              <div style={{ 
+                marginTop: '10px', 
+                padding: '12px', 
+                background: '#f0f8ff', 
+                borderRadius: '8px',
+                border: '2px solid #667eea'
+              }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#667eea', textAlign: 'center' }}>
+                  🚗 שיבוץ רכבים
+                </div>
+                {activity.vehicleAssignments.map((va, i) => (
+                  <div key={i} style={{ 
+                    padding: '10px', 
+                    background: 'white', 
+                    borderRadius: '8px', 
+                    marginBottom: i < activity.vehicleAssignments.length - 1 ? '8px' : '0'
+                  }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#667eea' }}>
+                      🚗 {va.vehicle}
+                    </div>
+                    {va.passengersOutbound && va.passengersOutbound.length > 0 && (
+                      <div style={{ marginBottom: '4px', fontSize: '14px' }}>
+                        <span style={{ color: '#0066cc', fontWeight: 'bold' }}>➡️ הלוך: </span>
+                        <span>{va.passengersOutbound.join(', ')}</span>
+                      </div>
+                    )}
+                    {va.passengersReturn && va.passengersReturn.length > 0 && (
+                      <div style={{ fontSize: '14px' }}>
+                        <span style={{ color: '#ff9800', fontWeight: 'bold' }}>⬅️ חזור: </span>
+                        <span>{va.passengersReturn.join(', ')}</span>
+                      </div>
+                    )}
+                    {(!va.passengersOutbound || va.passengersOutbound.length === 0) && 
+                     (!va.passengersReturn || va.passengersReturn.length === 0) && (
+                      <div style={{ fontSize: '14px', color: '#999', fontStyle: 'italic' }}>אין נוסעים משוייכים</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             
             {/* Action Buttons */}
             <div className="card-actions">
@@ -916,6 +1073,91 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
             setEditingActivityType(null);
           }}
         />
+      )}
+
+      {/* Vehicle Assignment Popup */}
+      {vehiclePopupActivity && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setVehiclePopupActivity(null)}
+          style={{ zIndex: 2000 }}
+        >
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '800px', maxHeight: '80vh', overflowY: 'auto' }}
+          >
+            <h2 style={{ color: '#667eea', marginBottom: '20px', textAlign: 'center' }}>
+              🚗 שיבוץ רכבים
+            </h2>
+            <h3 style={{ marginBottom: '15px', color: '#333' }}>
+              {vehiclePopupActivity.taskName || vehiclePopupActivity.projectName}
+            </h3>
+            
+            {vehiclePopupActivity.vehicleAssignments && vehiclePopupActivity.vehicleAssignments.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {vehiclePopupActivity.vehicleAssignments.map((va, i) => (
+                  <div key={i} style={{ 
+                    padding: '15px', 
+                    background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)', 
+                    borderRadius: '12px', 
+                    border: '2px solid #667eea',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <div style={{ 
+                      fontWeight: 'bold', 
+                      marginBottom: '12px', 
+                      color: '#667eea',
+                      fontSize: '18px',
+                      borderBottom: '2px solid #667eea',
+                      paddingBottom: '8px'
+                    }}>
+                      🚗 {va.vehicle}
+                    </div>
+                    {va.passengersOutbound && va.passengersOutbound.length > 0 && (
+                      <div style={{ marginBottom: '10px', padding: '10px', background: 'white', borderRadius: '8px' }}>
+                        <span style={{ color: '#0066cc', fontWeight: 'bold', fontSize: '15px' }}>➡️ הלוך: </span>
+                        <span style={{ fontSize: '15px' }}>{va.passengersOutbound.join(', ')}</span>
+                      </div>
+                    )}
+                    {va.passengersReturn && va.passengersReturn.length > 0 && (
+                      <div style={{ padding: '10px', background: 'white', borderRadius: '8px' }}>
+                        <span style={{ color: '#ff9800', fontWeight: 'bold', fontSize: '15px' }}>⬅️ חזור: </span>
+                        <span style={{ fontSize: '15px' }}>{va.passengersReturn.join(', ')}</span>
+                      </div>
+                    )}
+                    {(!va.passengersOutbound || va.passengersOutbound.length === 0) && 
+                     (!va.passengersReturn || va.passengersReturn.length === 0) && (
+                      <div style={{ fontSize: '15px', color: '#999', fontStyle: 'italic', padding: '10px' }}>אין נוסעים משוייכים</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#999', fontSize: '16px' }}>
+                אין שיבוץ רכבים עבור פעילות זו
+              </div>
+            )}
+            
+            <button
+              onClick={() => setVehiclePopupActivity(null)}
+              style={{
+                marginTop: '20px',
+                width: '100%',
+                padding: '12px',
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
+            >
+              סגור
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

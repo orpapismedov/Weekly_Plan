@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 function ActivityModal({ day, activity, onSave, onClose }) {
   const defaultPlatforms = ['אירוסטאר', 'אורביטר 3', 'אורביטר 4', 'אורביטר 5', 'עננס'];
@@ -18,6 +20,49 @@ function ActivityModal({ day, activity, onSave, onClose }) {
   const [workSites, setWorkSites] = useState(defaultWorkSites);
   const [vehicles, setVehicles] = useState(defaultVehicles);
   
+  // Load field lists from Firebase on component mount
+  useEffect(() => {
+    const loadFieldLists = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'activityFieldLists');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.platforms) setPlatforms(data.platforms);
+          if (data.distributions) setDistributions(data.distributions);
+          if (data.projectNumbers) setProjectNumbers(data.projectNumbers);
+          if (data.workSites) setWorkSites(data.workSites);
+          if (data.vehicles) setVehicles(data.vehicles);
+        }
+      } catch (error) {
+        console.error('Error loading field lists:', error);
+      }
+    };
+    loadFieldLists();
+  }, []);
+
+  // Save field lists to Firebase whenever they change
+  useEffect(() => {
+    const saveFieldLists = async () => {
+      try {
+        await setDoc(doc(db, 'settings', 'activityFieldLists'), {
+          platforms,
+          distributions,
+          projectNumbers,
+          workSites,
+          vehicles
+        });
+      } catch (error) {
+        console.error('Error saving field lists:', error);
+      }
+    };
+    // Only save if lists have been loaded (avoid saving defaults immediately)
+    const timer = setTimeout(() => {
+      saveFieldLists();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [platforms, distributions, projectNumbers, workSites, vehicles]);
+
   const [showAddPlatform, setShowAddPlatform] = useState(false);
   const [showAddDistribution, setShowAddDistribution] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
@@ -37,6 +82,7 @@ function ActivityModal({ day, activity, onSave, onClose }) {
     platform: '',
     type: 'אווירי',
     taskName: '',
+    projectName: '',
     startTime: '09:00',
     endTime: '18:00',
     manager: '',
@@ -83,7 +129,8 @@ function ActivityModal({ day, activity, onSave, onClose }) {
         technician: activity.technician || '',
         additionalFactorsOnSite: activity.additionalFactorsOnSite || '',
         engine: activity.engine || '',
-        serialNumber: activity.serialNumber || ''
+        serialNumber: activity.serialNumber || '',
+        projectName: activity.projectName || ''
       };
       setFormData(updatedActivity);
       setVehicleAssignments(activity.vehicleAssignments || []);
@@ -669,6 +716,17 @@ function ActivityModal({ day, activity, onSave, onClose }) {
           </div>
 
           <div className="form-group">
+            <label>שם פרויקט</label>
+            <input
+              type="text"
+              name="projectName"
+              value={formData.projectName}
+              onChange={handleChange}
+              placeholder="שם הפרויקט"
+            />
+          </div>
+
+          <div className="form-group">
             <label>רכבים (בחר אחד או יותר)</label>
             <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button
@@ -983,7 +1041,7 @@ function ActivityModal({ day, activity, onSave, onClose }) {
               </div>
 
               <div className="form-group">
-                <label>מספר סחרן (4X-XXX)</label>
+                <label>מספר סחרן / קבע</label>
                 <input
                   type="text"
                   name="serialNumber"
