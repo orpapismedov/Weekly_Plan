@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 220">
+  <rect width="820" height="220" fill="transparent"/>
+  
+  <!-- Orange triangle logo -->
+  <defs>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6347;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ff4500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <path d="M 10 150 L 120 80 L 230 150 L 120 120 Z" fill="url(#orangeGrad)"/>
+  
+  <!-- AERONAUTICS text -->
+  <text x="270" y="125" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="bold" fill="white" letter-spacing="6">
+    AERONAUTICS<tspan font-size="30" baseline-shift="super">™</tspan>
+  </text>
+  
+  <!-- Tagline -->
+  <text x="275" y="155" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="white" letter-spacing="10">
+    YOUR EDGE IN THE FIELD
+  </text>
+</svg>
