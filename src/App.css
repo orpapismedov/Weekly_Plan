@@ -47,9 +47,10 @@ body {
   .app-header {
     padding: 25px 40px;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin-bottom: 30px;
+    gap: 40px;
   }
 }
 
@@ -60,7 +61,7 @@ body {
 }
 
 .logo-section h1 {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(135deg, #ff6347 0%, #ff4500 50%, #dc2626 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -96,7 +97,6 @@ body {
     text-align: left;
   }
 }
-
 .mode-toggle {
   display: flex;
   flex-wrap: wrap;
@@ -107,8 +107,11 @@ body {
 
 @media (min-width: 768px) {
   .mode-toggle {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 600px;
   }
 }
 
@@ -135,7 +138,9 @@ body {
     padding: 14px 28px;
     font-size: 1em;
     min-width: auto;
+    max-width: none;
     flex: 0 0 auto;
+    width: 100%;
   }
 }
 
@@ -145,8 +150,8 @@ body {
 }
 
 .mode-toggle button.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #ff6347, #dc2626);
+  box-shadow: 0 6px 25px rgba(255, 99, 71, 0.4);
   color: white;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
@@ -175,19 +180,45 @@ body {
   border-bottom: 2px solid #667eea;
 }
 
+.week-header-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.week-header-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Desktop layout - horizontal and left-aligned */
+@media (min-width: 768px) {
+  .week-header-content {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+  }
+  
+  .filter-button-row {
+    display: flex;
+    justify-content: flex-start;
+  }
+}
+
 .week-header h2 {
   font-size: 2.5em;
   color: #333;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   font-weight: 700;
 }
 
 .week-number {
   font-size: 1.5em;
-  background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #000;
   font-weight: 800;
 }
 
@@ -290,7 +321,7 @@ body {
   backdrop-filter: blur(10px);
   padding: 18px;
   margin-bottom: 12px;
-  border-radius: 12px;
+  border-radius: 80px;
   border-right: 4px solid transparent;
   border-image: linear-gradient(135deg, #667eea, #764ba2) 1;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);

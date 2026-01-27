@@ -26,6 +26,7 @@ function UserSearch({ weekData, onDayClick }) {
           activity.technician,
           activity.additional,
           activity.poc,
+          activity.pocMant,
           activity.taskName,
           activity.projectName
         ].filter(field => field) // Remove undefined/null values
@@ -59,51 +60,113 @@ function UserSearch({ weekData, onDayClick }) {
         <div className="search-results">
           <h3>נמצאו {searchResults.length} פעילויות עבור "{searchTerm}"</h3>
           <div className="days-grid">
-            {searchResults.map((result, index) => (
-              <div 
-                key={index} 
-                className="activity-card"
-                onClick={() => onDayClick(result.day)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="activity-header">
-                  <span style={{ 
-                    background: '#28a745', 
-                    color: 'white', 
-                    padding: '5px 12px', 
-                    borderRadius: '20px',
-                    fontSize: '0.9em',
-                    fontWeight: 'bold'
-                  }}>
-                    {result.day}
-                  </span>
-                  <span className="platform-badge">{result.activity.platform}</span>
-                </div>
-                <div className="activity-info">
-                  <div><strong>משימה:</strong> {result.activity.taskName || result.activity.projectName}</div>
-                  <div><strong>שעות:</strong> {result.activity.startTime} - {result.activity.endTime}</div>
-                  <div><strong>מנהל:</strong> {result.activity.manager || result.activity.projectManager}</div>
+            {searchResults.map((result, index) => {
+              const activity = result.activity;
+              const isFlightActivity = activity.activityType === 'flight' || (!activity.activityType && activity.platform);
+              const isMantActivity = activity.activityType === 'mant';
+              const isAbroadActivity = activity.activityType === 'abroad';
+
+              return (
+                <div 
+                  key={index} 
+                  className="activity-card"
+                  onClick={() => onDayClick(result.day)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="activity-header">
+                    <span style={{ 
+                      background: isMantActivity ? '#f59e0b' : isAbroadActivity ? '#10b981' : '#28a745', 
+                      color: 'white', 
+                      padding: '5px 12px', 
+                      borderRadius: '20px',
+                      fontSize: '0.9em',
+                      fontWeight: 'bold'
+                    }}>
+                      {result.day}
+                    </span>
+                    {activity.platform && (
+                      <span className="platform-badge">{activity.platform}</span>
+                    )}
+                  </div>
                   
-                  {/* Show crew fields for flight activities */}
-                  {result.activity.pilotInside && (
-                    <div><strong>מטיס פנים:</strong> {result.activity.pilotInside}</div>
+                  {/* Activity Type Label */}
+                  {isFlightActivity && (
+                    <div style={{ marginTop: '10px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#667eea' }}>קו טיסה</span>
+                    </div>
                   )}
-                  {result.activity.pilotOutside && (
-                    <div><strong>מטיס חוץ:</strong> {result.activity.pilotOutside}</div>
+                  {isMantActivity && (
+                    <div style={{ marginTop: '10px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#f59e0b' }}>מנ"ט</span>
+                    </div>
                   )}
-                  {result.activity.landingManager && (
-                    <div><strong>אחראי מנחת:</strong> {result.activity.landingManager}</div>
-                  )}
-                  {result.activity.technician && (
-                    <div><strong>טכנאי:</strong> {result.activity.technician}</div>
+                  {isAbroadActivity && (
+                    <div style={{ marginTop: '10px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#10b981' }}>חו"ל</span>
+                    </div>
                   )}
                   
-                  {result.activity.notes && (
-                    <div><strong>הערות:</strong> {result.activity.notes}</div>
-                  )}
+                  <div className="activity-info">
+                    {/* Task/Project Name - all types */}
+                    {activity.taskName && (
+                      <div><strong>משימה:</strong> {activity.taskName}</div>
+                    )}
+                    {activity.projectName && (
+                      <div><strong>פרויקט:</strong> {activity.projectName}</div>
+                    )}
+                    
+                    {/* Time - flight activities only */}
+                    {isFlightActivity && activity.startTime && activity.endTime && (
+                      <div><strong>שעות:</strong> {activity.startTime} - {activity.endTime}</div>
+                    )}
+                    
+                    {/* Manager fields */}
+                    {activity.manager && (
+                      <div><strong>מנהל:</strong> {activity.manager}</div>
+                    )}
+                    {activity.projectManager && (
+                      <div><strong>מנהל פרויקט:</strong> {activity.projectManager}</div>
+                    )}
+                    
+                    {/* Landing Manager - all types */}
+                    {activity.landingManager && (
+                      <div><strong>אחראי מנחת:</strong> {activity.landingManager}</div>
+                    )}
+                    
+                    {/* Pilots - all types */}
+                    {activity.pilotInside && (
+                      <div><strong>מטיס פנים:</strong> {activity.pilotInside}</div>
+                    )}
+                    {activity.pilotOutside && (
+                      <div><strong>מטיס חוץ:</strong> {activity.pilotOutside}</div>
+                    )}
+                    
+                    {/* Technician - all types */}
+                    {activity.technician && (
+                      <div><strong>טכנאי:</strong> {activity.technician}</div>
+                    )}
+                    
+                    {/* POC fields - type specific */}
+                    {activity.poc && (
+                      <div><strong>איש קשר:</strong> {activity.poc}</div>
+                    )}
+                    {activity.pocMant && (
+                      <div><strong>POC במנ"ט:</strong> {activity.pocMant}</div>
+                    )}
+                    
+                    {/* Additional field - flight activities */}
+                    {activity.additional && (
+                      <div><strong>נוסף:</strong> {activity.additional}</div>
+                    )}
+                    
+                    {/* Notes - all types */}
+                    {activity.notes && (
+                      <div><strong>הערות:</strong> {activity.notes}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

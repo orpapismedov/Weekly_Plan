@@ -8,9 +8,9 @@ import MealsLink from './components/MealsLink';
 import AdditionalInfo from './components/AdditionalInfo';
 import FrequencyTable from './components/FrequencyTable';
 import PreviousWeeks from './components/PreviousWeeks';
-import { motion } from 'framer-motion';
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
 
 function getCurrentWeekNumber() {
   const now = new Date();
@@ -300,6 +300,74 @@ function App() {
     }
   };
 
+  const exportToExcel = () => {
+    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
+    const data = [];
+
+    // Add header row
+    data.push(['יום', 'סוג פעילות', 'פלטפורמה', 'משימה/פרויקט', 'סוג', 'שעות', 'מנהל/מנהל פרויקט', 'מטיס פנים', 'מטיס חוץ', 'אחראי מנחת', 'טכנאי', 'איש קשר', 'הערות']);
+
+    // Add data rows
+    days.forEach(day => {
+      const dayActivities = weekData.activities[day];
+      if (dayActivities.length === 0) {
+        data.push([day, '', '', '', '', '', '', '', '', '', '', '', '']);
+      } else {
+        dayActivities.forEach((activity, index) => {
+          const activityType = activity.activityType === 'mant' ? 'מנ"ט' : 
+                              activity.activityType === 'abroad' ? 'חו"ל' : 'קו טיסה';
+          
+          const taskProject = activity.taskName || activity.projectName || '';
+          const manager = activity.manager || activity.projectManager || '';
+          const hours = activity.startTime && activity.endTime ? `${activity.startTime} - ${activity.endTime}` : '';
+          const poc = activity.poc || activity.pocMant || '';
+
+          data.push([
+            index === 0 ? day : '', // Show day only for first activity
+            activityType,
+            activity.platform || '',
+            taskProject,
+            activity.type || '',
+            hours,
+            manager,
+            activity.pilotInside || '',
+            activity.pilotOutside || '',
+            activity.landingManager || '',
+            activity.technician || '',
+            poc,
+            activity.notes || ''
+          ]);
+        });
+      }
+    });
+
+    // Create worksheet and workbook
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 10 }, // יום
+      { wch: 12 }, // סוג פעילות
+      { wch: 15 }, // פלטפורמה
+      { wch: 25 }, // משימה/פרויקט
+      { wch: 10 }, // סוג
+      { wch: 15 }, // שעות
+      { wch: 15 }, // מנהל
+      { wch: 15 }, // מטיס פנים
+      { wch: 15 }, // מטיס חוץ
+      { wch: 15 }, // אחראי מנחת
+      { wch: 15 }, // טכנאי
+      { wch: 15 }, // איש קשר
+      { wch: 30 }  // הערות
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `שבוע ${weekData.weekNumber}`);
+
+    // Save file
+    XLSX.writeFile(wb, `תכנית_שבועית_שבוע_${weekData.weekNumber}.xlsx`);
+  };
+
   const handleWeekChange = async (offset) => {
     setLoading(true);
     setCurrentWeekOffset(offset);
@@ -318,60 +386,27 @@ function App() {
         left: 0,
         width: '100%',
         height: '100%',
-        background: 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)',
+        background: 'linear-gradient(135deg, #ff6347 0%, #dc2626 25%, #1a1a1a 75%, #000000 100%)',
         zIndex: 0
-      }}>
-        <svg
-          width="100%"
-          height="100%"
-          style={{ position: 'absolute', top: 0, left: 0 }}
-        >
-          <defs>
-            <radialGradient id="beam1">
-              <stop offset="0%" stopColor="#444444" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#333333" stopOpacity="0" />
-            </radialGradient>
-            
-            <radialGradient id="beam2">
-              <stop offset="0%" stopColor="#3a3a3a" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#2a2a2a" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          
-          <motion.circle
-            cx="20%"
-            cy="20%"
-            r="100"
-            fill="url(#beam1)"
-            animate={{ scale: [0.8, 1.1, 0.8] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          />
-          
-          <motion.circle
-            cx="80%"
-            cy="30%"
-            r="120"
-            fill="url(#beam2)"
-            animate={{ scale: [1, 1.15, 1] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          />
-          
-          <motion.circle
-            cx="50%"
-            cy="70%"
-            r="100"
-            fill="url(#beam1)"
-            animate={{ scale: [0.9, 1.12, 0.9] }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          />
-        </svg>
-      </div>
+      }}></div>
 
       <div className="App" style={{ position: 'relative', zIndex: 10, minHeight: '100vh' }}>
         <header className="app-header">
           <div className="logo-section">
-            <h1>🛩️ AERONAUTICS</h1>
-            <p>תכנון פעילות יומית - מבצעי אוויר</p>
+            <img 
+              src={`${process.env.PUBLIC_URL}/aeronautics-logo.svg`}
+              alt="Aeronautics Logo" 
+              style={{
+                height: window.innerWidth >= 768 ? '70px' : '50px',
+                width: 'auto'
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+            <h1 style={{ display: 'none' }}>🛩️ AERONAUTICS</h1>
+            <p>תכנון פעילות שבועית - מבצעי אוויר</p>
           </div>
         <div className="mode-toggle">
           <button 
@@ -459,6 +494,25 @@ function App() {
           >
             מידע נוסף
           </button>
+          {viewMode === 'manager' && (
+            <button 
+              onClick={exportToExcel}
+              style={{
+                marginLeft: '10px',
+                padding: '10px 20px',
+                background: '#17a2b8',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                minWidth: '180px'
+              }}
+            >
+              📊 ייצוא לאקסל
+            </button>
+          )}
           <button 
             className={viewMode === 'manager' ? 'active' : ''}
             onClick={handleManagerModeClick}

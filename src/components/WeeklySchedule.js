@@ -138,15 +138,12 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
 
   return (
     <div className="weekly-schedule">
-      <div className="week-header" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-          <div style={{ textAlign: 'center' }}>
-            <h2>תכנית שבועית</h2>
-            <div className="week-number">שבוע {weekNumber}</div>
-          </div>
+      <div className="week-header week-header-container">
+        <div className="week-header-content">
+          <h2>תכנית שבועית</h2>
+          <div className="week-number">שבוע {weekNumber}</div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', position: 'relative' }}>
+        <div className="filter-button-row">
           <button
             onClick={() => setShowFilterPanel(!showFilterPanel)}
             style={{
@@ -163,6 +160,9 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
           >
             🔍 סינון
           </button>
+        </div>
+        
+        <div style={{ position: 'relative' }}>
           
           {showFilterPanel && (
             <div style={{
@@ -411,9 +411,20 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                 >
                   {activity.activityType === 'flight' || !activity.activityType ? (
                     <>
+                      <div className="activity-header">
+                        <span style={{ fontWeight: 'bold', color: '#667eea' }}>קו טיסה</span>
+                      </div>
                       <div className="activity-info">
-                        <div style={{ marginBottom: '8px', textAlign: 'center' }}>
-                          <strong>פלטפורמה: </strong>
+                        <div style={{ 
+                          marginBottom: '8px', 
+                          textAlign: window.innerWidth >= 768 ? 'right' : 'center',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: window.innerWidth >= 768 ? 'flex-start' : 'center',
+                          gap: '8px',
+                          flexWrap: 'wrap'
+                        }}>
+                          <strong>פלטפורמה:</strong>
                           <span style={{ 
                             background: 'linear-gradient(135deg, #667eea, #764ba2)', 
                             color: 'white',
@@ -425,9 +436,15 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                             {activity.platform}
                           </span>
                         </div>
-                        <div><strong>משימה:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.taskName}</span></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                          <strong>משימה:</strong>
+                          <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>{activity.taskName}</span>
+                        </div>
                         {activity.projectName && (
-                          <div><strong>פרויקט:</strong> {activity.projectName}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <strong>פרויקט:</strong>
+                            <span>{activity.projectName}</span>
+                          </div>
                         )}
                         <div><strong>סוג פעילות:</strong> {activity.type}</div>
                         <div><strong>שעות:</strong> <span style={{ direction: 'ltr', display: 'inline-block' }}>{activity.startTime} - {activity.endTime}</span></div>
@@ -495,9 +512,15 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                         <span style={{ fontWeight: 'bold', color: '#f59e0b' }}>מנ"ט</span>
                       </div>
                       <div className="activity-info">
-                        <div><strong>משימה:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.taskName}</span></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                          <strong>משימה:</strong>
+                          <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>{activity.taskName}</span>
+                        </div>
                         {activity.projectName && (
-                          <div><strong>פרויקט:</strong> {activity.projectName}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <strong>פרויקט:</strong>
+                            <span>{activity.projectName}</span>
+                          </div>
                         )}
                         {activity.pilotInside && (
                           <div><strong>מטיס פנים:</strong> {activity.pilotInside}</div>
@@ -522,7 +545,10 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                         <span style={{ fontWeight: 'bold', color: '#10b981' }}>חו"ל</span>
                       </div>
                       <div className="activity-info">
-                        <div><strong>פרויקט:</strong> <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', marginLeft: '5px' }}>{activity.projectName}</span></div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                          <strong>פרויקט:</strong>
+                          <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>{activity.projectName}</span>
+                        </div>
                         {activity.pilotInside && (
                           <div><strong>מטיס פנים:</strong> {activity.pilotInside}</div>
                         )}

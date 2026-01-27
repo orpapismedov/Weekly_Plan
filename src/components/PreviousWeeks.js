@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import WeeklySchedule from './WeeklySchedule';
+import DailyPlan from './DailyPlan';
 
 function PreviousWeeks({ onClose, isManager }) {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -9,6 +10,7 @@ function PreviousWeeks({ onClose, isManager }) {
   const [weekData, setWeekData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedDay, setSelectedDay] = useState(null);
 
   const currentYear = new Date().getFullYear();
   const years = [];
@@ -79,20 +81,41 @@ function PreviousWeeks({ onClose, isManager }) {
       <div 
         className="modal-content" 
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '95vw', maxHeight: '95vh', overflow: 'auto' }}
+        style={{ 
+          maxWidth: '95vw', 
+          maxHeight: '95vh', 
+          overflow: 'auto',
+          width: window.innerWidth <= 768 ? '98vw' : 'auto',
+          height: window.innerWidth <= 768 ? '98vh' : 'auto',
+          padding: window.innerWidth <= 768 ? '15px' : '20px'
+        }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ color: '#667eea', margin: 0 }}>שבועות קודמים</h2>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <h2 style={{ 
+            color: '#667eea', 
+            margin: 0,
+            fontSize: window.innerWidth <= 768 ? '18px' : '24px'
+          }}>
+            שבועות קודמים
+          </h2>
           <button 
             onClick={onClose}
             style={{
-              padding: '8px 16px',
+              padding: window.innerWidth <= 768 ? '10px 20px' : '8px 16px',
               background: '#dc3545',
               color: 'white',
               border: 'none',
               borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: window.innerWidth <= 768 ? '16px' : '14px',
+              fontWeight: 'bold'
             }}
           >
             סגור
@@ -103,9 +126,10 @@ function PreviousWeeks({ onClose, isManager }) {
           display: 'flex', 
           gap: '15px', 
           marginBottom: '20px', 
-          padding: '20px', 
+          padding: window.innerWidth <= 768 ? '15px 10px' : '20px',
           background: '#f8f9fa', 
           borderRadius: '8px',
+          flexDirection: window.innerWidth <= 768 ? 'column' : 'row',
           flexWrap: 'wrap'
         }}>
           <div style={{ flex: '1', minWidth: '150px' }}>
@@ -159,19 +183,20 @@ function PreviousWeeks({ onClose, isManager }) {
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', width: window.innerWidth <= 768 ? '100%' : 'auto' }}>
             <button
               onClick={handleLoadWeek}
               disabled={loading || !selectedWeek}
               style={{
-                padding: '10px 30px',
+                padding: window.innerWidth <= 768 ? '12px' : '10px 30px',
                 background: loading || !selectedWeek ? '#ccc' : '#667eea',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: loading || !selectedWeek ? 'not-allowed' : 'pointer',
                 fontSize: '16px',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
+                width: window.innerWidth <= 768 ? '100%' : 'auto'
               }}
             >
               {loading ? 'טוען...' : 'הצג שבוע'}
@@ -194,37 +219,100 @@ function PreviousWeeks({ onClose, isManager }) {
 
         {weekData && (
           <div style={{ marginTop: '20px' }}>
-            <div style={{ 
-              padding: '10px 20px', 
-              background: '#e7f3ff', 
-              borderRadius: '6px', 
-              marginBottom: '15px',
-              textAlign: 'center'
-            }}>
-              <strong style={{ color: '#667eea', fontSize: '18px' }}>
-                שנה {selectedYear} - שבוע {selectedWeek} (שבוע מס' {weekData.weekNumber})
-              </strong>
-            </div>
-            <WeeklySchedule
-              weekNumber={weekData.weekNumber}
-              activities={weekData.activities}
-              isManager={false}
-              onAddActivity={() => {}}
-              onUpdateActivity={() => {}}
-              onDeleteActivity={() => {}}
-              onDayClick={() => {}}
-              currentWeekNumber={weekData.weekNumber}
-            />
-            <div style={{ 
-              marginTop: '20px', 
-              padding: '15px', 
-              background: '#fff3cd', 
-              borderRadius: '6px',
-              textAlign: 'center',
-              color: '#856404'
-            }}>
-              ⚠️ זוהי תצוגה לקריאה בלבד - לא ניתן לערוך שבועות קודמים
-            </div>
+            {!selectedDay ? (
+              <>
+                <div style={{ 
+                  padding: '10px 20px', 
+                  background: '#e7f3ff', 
+                  borderRadius: '6px', 
+                  marginBottom: '15px',
+                  textAlign: 'center'
+                }}>
+                  <strong style={{ 
+                    color: '#667eea', 
+                    fontSize: window.innerWidth <= 768 ? '16px' : '18px'
+                  }}>
+                    שנה {selectedYear} - שבוע {selectedWeek} (שבוע מס' {weekData.weekNumber})
+                  </strong>
+                </div>
+                <WeeklySchedule
+                  weekNumber={weekData.weekNumber}
+                  activities={weekData.activities}
+                  isManager={false}
+                  onAddActivity={() => {}}
+                  onUpdateActivity={() => {}}
+                  onDeleteActivity={() => {}}
+                  onDayClick={(day) => setSelectedDay(day)}
+                  currentWeekNumber={weekData.weekNumber}
+                />
+                <div style={{ 
+                  marginTop: '20px', 
+                  padding: '15px', 
+                  background: '#fff3cd', 
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  color: '#856404'
+                }}>
+                  ⚠️ זוהי תצוגה לקריאה בלבד - לא ניתן לערוך שבועות קודמים
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ 
+                  padding: '10px 20px', 
+                  background: '#e7f3ff', 
+                  borderRadius: '6px', 
+                  marginBottom: '15px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '10px'
+                }}>
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    style={{
+                      padding: window.innerWidth <= 768 ? '10px 15px' : '8px 16px',
+                      background: '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: window.innerWidth <= 768 ? '16px' : '14px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    ← חזור לתצוגה שבועית
+                  </button>
+                  <strong style={{ 
+                    color: '#667eea', 
+                    fontSize: window.innerWidth <= 768 ? '16px' : '18px',
+                    width: window.innerWidth <= 768 ? '100%' : 'auto',
+                    textAlign: window.innerWidth <= 768 ? 'center' : 'right'
+                  }}>
+                    {selectedDay} - שבוע {selectedWeek} ({weekData.weekNumber})
+                  </strong>
+                </div>
+                <DailyPlan
+                  day={selectedDay}
+                  activities={weekData.activities[selectedDay] || []}
+                  onBack={() => setSelectedDay(null)}
+                  isManager={false}
+                  onUpdateActivity={() => {}}
+                  onDeleteActivity={() => {}}
+                />
+                <div style={{ 
+                  marginTop: '20px', 
+                  padding: '15px', 
+                  background: '#fff3cd', 
+                  borderRadius: '6px',
+                  textAlign: 'center',
+                  color: '#856404'
+                }}>
+                  ⚠️ זוהי תצוגה לקריאה בלבד - לא ניתן לערוך שבועות קודמים
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
