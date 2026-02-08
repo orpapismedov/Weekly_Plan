@@ -4,7 +4,7 @@ import ActivityTypeSelector from './ActivityTypeSelector';
 import MantActivityModal from './MantActivityModal';
 import AbroadActivityModal from './AbroadActivityModal';
 
-function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUpdateActivity, onDeleteActivity, onDayClick, currentWeekNumber }) {
+function WeeklySchedule({ weekNumber, weekDateRange, activities, isManager, onAddActivity, onAddActivityToWeek, onUpdateActivity, onDeleteActivity, onDayClick, currentWeekNumber }) {
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [selectedActivityType, setSelectedActivityType] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
@@ -13,6 +13,10 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
   const [activityCategoryFilter, setActivityCategoryFilter] = useState('all'); // 'all', 'flight', 'mant', 'abroad'
   const [platformFilter, setPlatformFilter] = useState('all'); // 'all' or specific platform
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [copiedActivity, setCopiedActivity] = useState(null); // Store copied activity
+  const [showPastePopup, setShowPastePopup] = useState(false);
+  const [selectedPasteDays, setSelectedPasteDays] = useState([]);
+  const [selectedPasteWeek, setSelectedPasteWeek] = useState('current'); // 'current', 'next', 'afterNext'
 
   const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי'];
 
@@ -109,6 +113,48 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
     }
   };
 
+  const handleCopyClick = (activity, e) => {
+    e.stopPropagation();
+    // Store a copy of the activity (without the ID so it creates a new one when pasted)
+    const { id, ...activityWithoutId } = activity;
+    setCopiedActivity(activityWithoutId);
+    setShowPastePopup(true);
+    setSelectedPasteDays([]);
+    setSelectedPasteWeek('current');
+  };
+
+  const handlePasteFromPopup = async () => {
+    if (!copiedActivity || selectedPasteDays.length === 0) {
+      alert('יש לבחור לפחות יום אחד');
+      return;
+    }
+
+    // Determine which week to paste to based on selection
+    let targetWeekNumber = weekNumber;
+    if (selectedPasteWeek === 'next') {
+      targetWeekNumber = weekNumber + 1;
+    } else if (selectedPasteWeek === 'afterNext') {
+      targetWeekNumber = weekNumber + 2;
+    }
+
+    try {
+      // Paste to all selected days
+      for (const day of selectedPasteDays) {
+        await onAddActivityToWeek(targetWeekNumber, day, copiedActivity);
+      }
+      
+      alert(`הפעילות הודבקה בהצלחה בשבוע ${targetWeekNumber} ב-${selectedPasteDays.length} ימים!`);
+      
+      // Clear copied activity and close popup
+      setCopiedActivity(null);
+      setShowPastePopup(false);
+      setSelectedPasteDays([]);
+    } catch (error) {
+      console.error('Error pasting activity:', error);
+      alert('שגיאה בהדבקת הפעילות. אנא נסה שוב.');
+    }
+  };
+
   const handleSave = (activity, selectedDays = null) => {
     if (editingActivity) {
       onUpdateActivity(selectedDay, editingActivity.id, activity);
@@ -140,10 +186,32 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
     <div className="weekly-schedule">
       <div className="week-header week-header-container">
         <div className="week-header-content">
-          <h2>תכנית שבועית</h2>
-          <div className="week-number">שבוע {weekNumber}</div>
+          <h2 style={{ fontSize: '2em', margin: 0, fontWeight: '700', color: '#333' }}>תכנית שבועית</h2>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            gap: '2px'
+          }}>
+            <div style={{ 
+              fontSize: '1.8em', 
+              color: '#000', 
+              fontWeight: '800',
+              lineHeight: '1.2'
+            }}>
+              שבוע {weekNumber}
+            </div>
+            <div style={{ 
+              fontSize: '1em', 
+              fontWeight: '500', 
+              color: '#666',
+              lineHeight: '1.2'
+            }}>
+              {weekDateRange}
+            </div>
+          </div>
         </div>
-        <div className="filter-button-row">
+        <div className="filter-button-row" style={{ position: 'relative' }}>
           <button
             onClick={() => setShowFilterPanel(!showFilterPanel)}
             style={{
@@ -160,26 +228,66 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
           >
             🔍 סינון
           </button>
-        </div>
         
-        <div style={{ position: 'relative' }}>
-          
           {showFilterPanel && (
-            <div style={{
-              position: 'absolute',
-              top: '50px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'white',
-              border: '2px solid #667eea',
-              borderRadius: '12px',
-              padding: '20px',
-              boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-              zIndex: 1000,
-              minWidth: '400px',
-              maxWidth: '90vw'
-            }}>
-              <h3 style={{ marginBottom: '15px', color: '#667eea', textAlign: 'center' }}>אפשרויות סינון</h3>
+            <>
+              {/* Overlay to close on click outside */}
+              <div 
+                onClick={() => setShowFilterPanel(false)}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 999
+                }}
+              />
+              
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 10px)',
+                right: 0,
+                background: 'white',
+                border: '2px solid #667eea',
+                borderRadius: '12px',
+                padding: '20px',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+                zIndex: 1000,
+                minWidth: '350px',
+                maxWidth: '90vw'
+              }}>
+                {/* Close button */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  marginBottom: '15px'
+                }}>
+                  <h3 style={{ margin: 0, color: '#667eea' }}>אפשרויות סינון</h3>
+                  <button
+                    onClick={() => setShowFilterPanel(false)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      fontSize: '24px',
+                      cursor: 'pointer',
+                      color: '#999',
+                      padding: 0,
+                      width: '30px',
+                      height: '30px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.color = '#667eea'}
+                    onMouseLeave={(e) => e.target.style.color = '#999'}
+                    title="סגור"
+                  >
+                    ✕
+                  </button>
+                </div>
               
               {/* סוג פעילות */}
               <div style={{ marginBottom: '15px' }}>
@@ -340,6 +448,7 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                 </div>
               </div>
             </div>
+            </>
           )}
         </div>
       </div>
@@ -440,10 +549,16 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                           <strong>משימה:</strong>
                           <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>{activity.taskName}</span>
                         </div>
-                        {activity.projectName && (
+                        {activity.projectNumber && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                             <strong>פרויקט:</strong>
-                            <span>{activity.projectName}</span>
+                            <span>{activity.projectNumber}</span>
+                          </div>
+                        )}
+                        {activity.workSite && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <strong>אתר עבודה:</strong>
+                            <span>{activity.workSite}</span>
                           </div>
                         )}
                         <div><strong>סוג פעילות:</strong> {activity.type}</div>
@@ -504,6 +619,20 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                             ⚠️ חסרים פרטי צוות
                           </div>
                         )}
+                        {/* Show red warning if vehicle is missing for אווירי activities */}
+                        {activity.type === 'אווירי' && (!activity.vehiclesList || activity.vehiclesList.length === 0) && (
+                          <div style={{ 
+                            background: '#ffcccc', 
+                            padding: '4px', 
+                            borderRadius: '4px',
+                            fontSize: '0.85em',
+                            marginTop: '4px',
+                            color: '#cc0000',
+                            fontWeight: 'bold'
+                          }}>
+                            ⚠️ לא נבחר רכב
+                          </div>
+                        )}
                       </div>
                     </>
                   ) : activity.activityType === 'mant' ? (
@@ -516,10 +645,16 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                           <strong>משימה:</strong>
                           <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>{activity.taskName}</span>
                         </div>
-                        {activity.projectName && (
+                        {activity.projectNumber && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                             <strong>פרויקט:</strong>
-                            <span>{activity.projectName}</span>
+                            <span>{activity.projectNumber}</span>
+                          </div>
+                        )}
+                        {activity.workSite && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <strong>אתר עבודה:</strong>
+                            <span>{activity.workSite}</span>
                           </div>
                         )}
                         {activity.pilotInside && (
@@ -545,10 +680,22 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                         <span style={{ fontWeight: 'bold', color: '#10b981' }}>חו"ל</span>
                       </div>
                       <div className="activity-info">
+                        {activity.taskName && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <strong>משימה:</strong>
+                            <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>{activity.taskName}</span>
+                          </div>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                           <strong>פרויקט:</strong>
-                          <span className="platform-badge" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>{activity.projectName}</span>
+                          <span>{activity.projectNumber}</span>
                         </div>
+                        {activity.workSite && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <strong>אתר עבודה:</strong>
+                            <span>{activity.workSite}</span>
+                          </div>
+                        )}
                         {activity.pilotInside && (
                           <div><strong>מטיס פנים:</strong> {activity.pilotInside}</div>
                         )}
@@ -568,7 +715,7 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                     </>
                   ) : null}
                   {isManager && (
-                    <div style={{ marginTop: '10px' }}>
+                    <div style={{ marginTop: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                       <button 
                         className="edit-btn"
                         onClick={(e) => handleEditClick(day, activity, e)}
@@ -580,6 +727,25 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
                         onClick={(e) => handleDeleteClick(day, activity.id, e)}
                       >
                         מחק
+                      </button>
+                      <button 
+                        className="copy-btn"
+                        onClick={(e) => handleCopyClick(activity, e)}
+                        style={{
+                          padding: '8px 12px',
+                          background: '#10b981',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#059669'}
+                        onMouseLeave={(e) => e.target.style.background = '#10b981'}
+                      >
+                        העתק
                       </button>
                     </div>
                   )}
@@ -637,6 +803,136 @@ function WeeklySchedule({ weekNumber, activities, isManager, onAddActivity, onUp
           onSave={handleSave}
           onClose={handleCloseModal}
         />
+      )}
+
+      {/* Paste Popup */}
+      {showPastePopup && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '30px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
+          }}>
+            <h2 style={{ marginTop: 0, color: '#667eea', textAlign: 'center' }}>הדבקת פעילות</h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', color: '#333' }}>
+                בחר שבוע:
+              </label>
+              <select
+                value={selectedPasteWeek}
+                onChange={(e) => setSelectedPasteWeek(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '6px',
+                  border: '2px solid #667eea',
+                  fontSize: '16px'
+                }}
+              >
+                <option value="current">שבוע נוכחי ({weekNumber})</option>
+                <option value="next">שבוע הבא ({weekNumber + 1})</option>
+                <option value="afterNext">שבועיים קדימה ({weekNumber + 2})</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', color: '#333' }}>
+                בחר ימים (ניתן לבחור מספר ימים):
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {days.map(day => (
+                  <label key={day} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    padding: '10px',
+                    background: selectedPasteDays.includes(day) ? '#e7f3ff' : '#f9f9f9',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    border: selectedPasteDays.includes(day) ? '2px solid #667eea' : '2px solid transparent',
+                    transition: 'all 0.2s'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedPasteDays.includes(day)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedPasteDays([...selectedPasteDays, day]);
+                        } else {
+                          setSelectedPasteDays(selectedPasteDays.filter(d => d !== day));
+                        }
+                      }}
+                      style={{ 
+                        marginLeft: '10px',
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <span style={{ fontSize: '16px', fontWeight: '500' }}>{day}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                onClick={handlePasteFromPopup}
+                style={{
+                  padding: '12px 24px',
+                  background: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#5568d3'}
+                onMouseLeave={(e) => e.target.style.background = '#667eea'}
+              >
+                הדבק
+              </button>
+              <button
+                onClick={() => {
+                  setShowPastePopup(false);
+                  setCopiedActivity(null);
+                  setSelectedPasteDays([]);
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: '#e0e0e0',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#d0d0d0'}
+                onMouseLeave={(e) => e.target.style.background = '#e0e0e0'}
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

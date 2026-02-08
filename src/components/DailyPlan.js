@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import ActivityModal from './ActivityModal';
 import MantActivityModal from './MantActivityModal';
 import AbroadActivityModal from './AbroadActivityModal';
+import { db } from '../firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDeleteActivity }) {
+function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDeleteActivity, weekNumber }) {
   const [editingActivity, setEditingActivity] = useState(null);
   const [editingActivityType, setEditingActivityType] = useState(null);
   const [weatherData, setWeatherData] = useState({
@@ -18,6 +20,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
   const [expandedActivity, setExpandedActivity] = useState(null);
   const [vehiclePopupActivity, setVehiclePopupActivity] = useState(null);
   const [expandedVehicles, setExpandedVehicles] = useState(null);
+  const [isDailyFinal, setIsDailyFinal] = useState(false);
 
   const cloudOptions = ['1/8', '2/8', '3/8', '4/8', '5/8', '6/8', '7/8', '8/8'];
 
@@ -25,6 +28,98 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
+
+  // Load daily final status from Firebase and auto-set if day has arrived or passed
+  useEffect(() => {
+    const loadDailyStatus = async () => {
+      try {
+        // Check if the day has arrived (in Israel timezone)
+        const now = new Date();
+        const israelTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+        
+        // Map Hebrew day names to day of week numbers (0 = Sunday, 6 = Saturday)
+        const dayMapping = {
+          'ראשון': 0,
+          'שני': 1,
+          'שלישי': 2,
+          'רביעי': 3,
+          'חמישי': 4,
+          'שישי': 5,
+          'שבת': 6
+        };
+        
+        const targetDayOfWeek = dayMapping[day];
+        if (targetDayOfWeek === undefined) return;
+        
+        // Calculate the start of the current week (Sunday) in Israel time
+        const currentDayOfWeek = israelTime.getDay();
+        const startOfCurrentWeek = new Date(israelTime);
+        startOfCurrentWeek.setDate(israelTime.getDate() - currentDayOfWeek);
+        startOfCurrentWeek.setHours(0, 0, 0, 0);
+        
+        // Get the current week number
+        const startOfYear = new Date(israelTime.getFullYear(), 0, 1);
+        const startDay = startOfYear.getDay();
+        const daysSinceStart = Math.floor((israelTime - startOfYear) / (24 * 60 * 60 * 1000));
+        const adjustedDays = daysSinceStart + startDay;
+        const currentWeekNum = Math.ceil((adjustedDays + 1) / 7);
+        
+        // Calculate how many weeks difference between current week and the weekNumber prop
+        const weekDiff = weekNumber - currentWeekNum;
+        
+        // Calculate the target date (the day we're viewing)
+        const targetDate = new Date(startOfCurrentWeek);
+        targetDate.setDate(startOfCurrentWeek.getDate() + (weekDiff * 7) + targetDayOfWeek);
+        targetDate.setHours(0, 0, 0, 0);
+        
+        // Check if current Israel time >= target date (day has arrived or passed)
+        const dayHasArrived = israelTime >= targetDate;
+        
+        // Load or create the daily status document
+        const docRef = doc(db, 'dailyStatus', `week_${weekNumber}_${day}`);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const currentStatus = docSnap.data().isFinal || false;
+          
+          // Auto-set to final if day has arrived/passed and not already marked as final
+          if (!currentStatus && dayHasArrived) {
+            setIsDailyFinal(true);
+            await setDoc(docRef, { isFinal: true });
+          } else {
+            setIsDailyFinal(currentStatus);
+          }
+        } else {
+          // No document exists - auto-create as final if day has arrived/passed
+          if (dayHasArrived) {
+            setIsDailyFinal(true);
+            await setDoc(docRef, { isFinal: true });
+          } else {
+            setIsDailyFinal(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading daily status:', error);
+      }
+    };
+    loadDailyStatus();
+  }, [weekNumber, day]);
+
+  // Toggle daily final status
+  const handleToggleDailyFinal = async () => {
+    const newStatus = !isDailyFinal;
+    setIsDailyFinal(newStatus);
+    
+    try {
+      const docRef = doc(db, 'dailyStatus', `week_${weekNumber}_${day}`);
+      await setDoc(docRef, { isFinal: newStatus });
+      alert(newStatus ? 'היומית סומנה כסופית!' : 'היומית סומנה כלא סופית');
+    } catch (error) {
+      console.error('Error updating daily status:', error);
+      alert('שגיאה בעדכון הסטטוס');
+      setIsDailyFinal(!newStatus); // Revert on error
+    }
+  };
 
   // Helper function to determine if crew field should be highlighted red
   const shouldHighlightRed = (activity, fieldName) => {
@@ -226,7 +321,85 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
         <button className="back-btn" onClick={onBack}>חזור לתכנית שבועית</button>
       </div>
 
-      <div className="search-bar" style={{ marginBottom: '20px' }}>
+      {/* Daily Status Badge and Toggle Button */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        gap: '15px',
+        marginBottom: '20px',
+        flexWrap: 'wrap'
+      }}>
+        {/* Status Badge - Only show to users, not managers */}
+        {!isManager && (
+          <div style={{
+            padding: '12px 24px',
+            borderRadius: '8px',
+            border: isDailyFinal ? '3px solid #10b981' : '3px solid #ef4444',
+            background: isDailyFinal ? '#d1fae5' : '#fee2e2',
+            color: isDailyFinal ? '#065f46' : '#991b1b',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            textAlign: 'center'
+          }}>
+            {isDailyFinal ? 'יומית סופית' : 'יומית לא סופית'}
+          </div>
+        )}
+
+        {/* Manager Toggle Button */}
+        {isManager && (
+          <button
+            onClick={handleToggleDailyFinal}
+            style={{
+              padding: '12px 24px',
+              background: isDailyFinal ? '#ef4444' : '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '15px',
+              fontWeight: 'bold',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+            }}
+            onMouseEnter={(e) => e.target.style.opacity = '0.9'}
+            onMouseLeave={(e) => e.target.style.opacity = '1'}
+          >
+            {isDailyFinal ? 'הגדר יומית כ "לא סופית"' : 'הגדר יומית כ "סופית"'}
+          </button>
+        )}
+      </div>
+
+      <div className="search-bar" style={{ marginBottom: '20px', position: 'relative' }}>
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            style={{
+              position: 'absolute',
+              left: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'transparent',
+              border: 'none',
+              fontSize: '18px',
+              cursor: 'pointer',
+              color: '#999',
+              padding: '0',
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color 0.2s',
+              zIndex: 1
+            }}
+            onMouseEnter={(e) => e.target.style.color = '#667eea'}
+            onMouseLeave={(e) => e.target.style.color = '#999'}
+            title="נקה חיפוש"
+          >
+            ✕
+          </button>
+        )}
         <input
           type="text"
           value={searchTerm}
@@ -234,7 +407,8 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
           placeholder="חפש פעילות או עובד..."
           style={{ 
             width: '100%', 
-            padding: '12px', 
+            padding: '12px',
+            paddingLeft: searchTerm ? '40px' : '12px',
             fontSize: '16px',
             borderRadius: '8px',
             border: '2px solid #667eea'
@@ -267,8 +441,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                   <th>טכנאי</th>
                   <th>נוספים</th>
                   <th>אתר עבודה</th>
-                  <th>שם פרויקט</th>
-                  <th>מספר פרויקט</th>
+                  <th>פרויקט</th>
                   <th>רכבים</th>
                   <th>פעולות</th>
                 </tr>
@@ -330,8 +503,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                   </td>
                   <td>{activity.additional || '-'}</td>
                   <td>{activity.workSite || '-'}</td>
-                  <td>{activity.projectName || '-'}</td>
-                  <td>{activity.activityType === 'abroad' ? '-' : activity.projectNumber || '-'}</td>
+                  <td>{activity.projectNumber || '-'}</td>
                   <td>
                     {activity.vehicleAssignments && activity.vehicleAssignments.length > 0 ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
@@ -933,7 +1105,9 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         padding: '8px',
                         borderRadius: '6px',
                         border: '1px solid #ddd',
-                        background: isManager ? 'white' : '#f5f5f5'
+                        background: 'white',
+                        fontWeight: isManager ? 'normal' : 'bold',
+                        color: '#333'
                       }}
                     />
                   </div>
@@ -953,7 +1127,9 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         padding: '8px',
                         borderRadius: '6px',
                         border: '1px solid #ddd',
-                        background: isManager ? 'white' : '#f5f5f5'
+                        background: 'white',
+                        fontWeight: isManager ? 'normal' : 'bold',
+                        color: '#333'
                       }}
                     />
                   </div>
@@ -971,7 +1147,9 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         padding: '8px',
                         borderRadius: '6px',
                         border: '1px solid #ddd',
-                        background: isManager ? 'white' : '#f5f5f5'
+                        background: 'white',
+                        fontWeight: isManager ? 'normal' : 'bold',
+                        color: '#333'
                       }}
                     >
                       <option value="">בחר עננות</option>
@@ -996,7 +1174,9 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         padding: '8px',
                         borderRadius: '6px',
                         border: '1px solid #ddd',
-                        background: isManager ? 'white' : '#f5f5f5'
+                        background: 'white',
+                        fontWeight: isManager ? 'normal' : 'bold',
+                        color: '#333'
                       }}
                     />
                   </div>
@@ -1016,7 +1196,9 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         padding: '8px',
                         borderRadius: '6px',
                         border: '1px solid #ddd',
-                        background: isManager ? 'white' : '#f5f5f5',
+                        background: 'white',
+                        fontWeight: isManager ? 'normal' : 'bold',
+                        color: '#333',
                         resize: 'vertical'
                       }}
                     />

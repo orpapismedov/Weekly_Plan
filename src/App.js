@@ -27,30 +27,34 @@ function getCurrentWeekNumber() {
   return Math.ceil((adjustedDays + 1) / 7);
 }
 
-// Check if it's past Friday 10:00 AM Israel time
-function isPastFridayRollover() {
-  const now = new Date();
-  // Convert to Israel time (UTC+2 or UTC+3 depending on DST)
-  const israelTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+// Get the date range (Sunday to Thursday) for a given week number
+function getWeekDateRange(weekNumber) {
+  const currentWeekNum = getCurrentWeekNumber();
+  const today = new Date();
+  const currentDayOfWeek = today.getDay();
   
-  const day = israelTime.getDay(); // 0 = Sunday, 5 = Friday
-  const hours = israelTime.getHours();
-  const minutes = israelTime.getMinutes();
+  // Calculate the offset in weeks
+  const weekOffset = weekNumber - currentWeekNum;
   
-  // If it's Friday (5) and past 10:00 AM, or if it's Saturday (6), return true
-  if (day === 5 && (hours > 10 || (hours === 10 && minutes >= 0))) {
-    return true;
-  }
-  if (day === 6) {
-    return true;
-  }
+  // Calculate the start of the current week (Sunday)
+  const startOfCurrentWeek = new Date(today);
+  startOfCurrentWeek.setDate(today.getDate() - currentDayOfWeek);
   
-  return false;
-}
-
-// Get the effective week offset considering Friday rollover
-function getEffectiveWeekOffset(offset) {
-  return isPastFridayRollover() ? offset + 1 : offset;
+  // Calculate the start of the target week (Sunday)
+  const sunday = new Date(startOfCurrentWeek);
+  sunday.setDate(startOfCurrentWeek.getDate() + (weekOffset * 7));
+  
+  // Calculate Thursday (4 days after Sunday)
+  const thursday = new Date(sunday);
+  thursday.setDate(sunday.getDate() + 4);
+  
+  const formatDate = (date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}/${month}`;
+  };
+  
+  return `${formatDate(sunday)} - ${formatDate(thursday)}`;
 }
 
 function initializeWeekActivities() {
@@ -73,12 +77,12 @@ function App() {
   const [showPreviousWeeks, setShowPreviousWeeks] = useState(false);
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week, 1 = next week, 2 = week after
   const [loading, setLoading] = useState(true);
+  const [publishedWeekOffset, setPublishedWeekOffset] = useState(0); // 0 = current week, 1 = next week (for users)
   
   // Load week data from Firebase or initialize
   const loadWeekData = async (offset) => {
     const currentWeekNum = getCurrentWeekNumber();
-    const effectiveOffset = getEffectiveWeekOffset(offset);
-    const weekNum = currentWeekNum + effectiveOffset;
+    const weekNum = currentWeekNum + offset;
     
     try {
       const docRef = doc(db, 'weekData', `week_${weekNum}`);
@@ -106,6 +110,18 @@ function App() {
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
+      
+      // Load published week offset
+      try {
+        const settingsRef = doc(db, 'settings', 'weekPublication');
+        const settingsSnap = await getDoc(settingsRef);
+        if (settingsSnap.exists()) {
+          setPublishedWeekOffset(settingsSnap.data().publishedWeekOffset || 0);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+      
       const data = await loadWeekData(0);
       setWeekData(data);
       setLoading(false);
@@ -128,18 +144,18 @@ function App() {
     saveWeekData();
   }, [weekData, loading]);
 
-  // Ensure users always see current week
+  // Ensure users see the published week
   useEffect(() => {
     const resetUserView = async () => {
-      if (viewMode === 'user' && currentWeekOffset !== 0) {
-        setCurrentWeekOffset(0);
-        const data = await loadWeekData(0);
+      if (viewMode === 'user' && currentWeekOffset !== publishedWeekOffset) {
+        setCurrentWeekOffset(publishedWeekOffset);
+        const data = await loadWeekData(publishedWeekOffset);
         setWeekData(data);
         setSelectedDay(null);
       }
     };
     resetUserView();
-  }, [viewMode]);
+  }, [viewMode, publishedWeekOffset]);
 
   // Persistent state for utility components - Load from Firebase
   const [suppliers, setSuppliers] = useState([]);
@@ -248,6 +264,49 @@ function App() {
         [day]: [...prev.activities[day], { ...activity, id: Date.now() }]
       }
     }));
+  };
+
+  const handleAddActivityToWeek = async (targetWeekNumber, day, activity) => {
+    try {
+      const docRef = doc(db, 'weekData', `week_${targetWeekNumber}`);
+      const docSnap = await getDoc(docRef);
+      
+      let weekDataToUpdate;
+      if (docSnap.exists()) {
+        weekDataToUpdate = docSnap.data();
+      } else {
+        // Initialize new week if it doesn't exist
+        weekDataToUpdate = {
+          weekNumber: targetWeekNumber,
+          activities: {
+            'ראשון': [],
+            'שני': [],
+            'שלישי': [],
+            'רביעי': [],
+            'חמישי': []
+          }
+        };
+      }
+
+      // Add the activity to the specified day
+      weekDataToUpdate.activities[day] = [
+        ...weekDataToUpdate.activities[day],
+        { ...activity, id: Date.now() + Math.random() }
+      ];
+
+      // Save to Firebase
+      await setDoc(docRef, weekDataToUpdate);
+
+      // If the target week is the currently viewed week, update local state
+      if (targetWeekNumber === weekData.weekNumber) {
+        setWeekData(weekDataToUpdate);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error adding activity to week:', error);
+      return false;
+    }
   };
 
   const handleUpdateActivity = (day, activityId, updatedActivity) => {
@@ -375,6 +434,21 @@ function App() {
     setWeekData(data);
     setSelectedDay(null);
     setLoading(false);
+  };
+
+  const handleTogglePublishedWeek = async () => {
+    const newOffset = publishedWeekOffset === 0 ? 1 : 0;
+    setPublishedWeekOffset(newOffset);
+    
+    // Save to Firebase
+    try {
+      const settingsRef = doc(db, 'settings', 'weekPublication');
+      await setDoc(settingsRef, { publishedWeekOffset: newOffset });
+      alert(newOffset === 1 ? 'שבוע הבא פורסם למשתמשים!' : 'חזרה להצגת השבוע הנוכחי');
+    } catch (error) {
+      console.error('Error updating published week:', error);
+      alert('שגיאה בעדכון ההגדרות');
+    }
   };
 
   return (
@@ -597,13 +671,15 @@ function App() {
       )}
 
       {viewMode === 'manager' && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          gap: '15px', 
-          marginBottom: '20px',
-          padding: '20px'
-        }}>
+        <>
+          <UserSearch weekData={weekData} onDayClick={handleDayClick} />
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: '15px', 
+            marginBottom: '20px',
+            padding: '20px'
+          }}>
           <button
             onClick={() => handleWeekChange(0)}
             style={{
@@ -616,10 +692,15 @@ function App() {
               fontSize: '15px',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
-              boxShadow: currentWeekOffset === 0 ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none'
+              boxShadow: currentWeekOffset === 0 ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
-            שבוע נוכחי ({getCurrentWeekNumber()})
+            <span>שבוע נוכחי ({getCurrentWeekNumber()})</span>
+            <span style={{ fontSize: '12px', opacity: 0.9 }}>{getWeekDateRange(getCurrentWeekNumber())}</span>
           </button>
           <button
             onClick={() => handleWeekChange(1)}
@@ -633,10 +714,15 @@ function App() {
               fontSize: '15px',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
-              boxShadow: currentWeekOffset === 1 ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none'
+              boxShadow: currentWeekOffset === 1 ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
-            שבוע הבא ({getCurrentWeekNumber() + 1})
+            <span>שבוע הבא ({getCurrentWeekNumber() + 1})</span>
+            <span style={{ fontSize: '12px', opacity: 0.9 }}>{getWeekDateRange(getCurrentWeekNumber() + 1)}</span>
           </button>
           <button
             onClick={() => handleWeekChange(2)}
@@ -650,18 +736,55 @@ function App() {
               fontSize: '15px',
               fontWeight: 'bold',
               transition: 'all 0.3s ease',
-              boxShadow: currentWeekOffset === 2 ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none'
+              boxShadow: currentWeekOffset === 2 ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
-            שבועיים הבאים ({getCurrentWeekNumber() + 2})
+            <span>שבועיים הבאים ({getCurrentWeekNumber() + 2})</span>
+            <span style={{ fontSize: '12px', opacity: 0.9 }}>{getWeekDateRange(getCurrentWeekNumber() + 2)}</span>
           </button>
         </div>
+        
+        {/* Publish Week Button for Managers - Only show in weekly view, not in daily plan */}
+        {!selectedDay && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: '15px',
+            marginBottom: '20px'
+          }}>
+            <button
+              onClick={handleTogglePublishedWeek}
+              style={{
+                padding: '14px 28px',
+                background: publishedWeekOffset === 1 ? '#f59e0b' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+              }}
+              onMouseEnter={(e) => e.target.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.target.style.opacity = '1'}
+            >
+              {publishedWeekOffset === 1 ? 'בטל פרסום שבועית' : 'פרסם את שבוע הבא'}
+            </button>
+          </div>
+        )}
+        </>
       )}
 
       {selectedDay ? (
         <DailyPlan 
           day={selectedDay}
           activities={weekData.activities[selectedDay]}
+          weekNumber={weekData.weekNumber}
           onBack={() => setSelectedDay(null)}
           isManager={viewMode === 'manager'}
           onUpdateActivity={(activityId, updatedActivity) => 
@@ -674,15 +797,17 @@ function App() {
       ) : (
         <WeeklySchedule 
           weekNumber={weekData.weekNumber}
+          weekDateRange={getWeekDateRange(weekData.weekNumber)}
           currentWeekNumber={getCurrentWeekNumber()}
           activities={weekData.activities}
           isManager={viewMode === 'manager'}
           onAddActivity={handleAddActivity}
+          onAddActivityToWeek={handleAddActivityToWeek}
           onUpdateActivity={handleUpdateActivity}
           onDeleteActivity={handleDeleteActivity}
           onDayClick={handleDayClick}
         />
-      )}
+      )}}
 
       {showSuppliers && (
         <Suppliers 

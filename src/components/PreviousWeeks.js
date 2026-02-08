@@ -30,9 +30,39 @@ function PreviousWeeks({ onClose, isManager }) {
 
   const currentWeekNumber = getCurrentWeekNumber();
 
-  // Generate weeks list, including current week but excluding future weeks
+  // Get the date range (Sunday to Thursday) for a given week number
+  const getWeekDateRange = (weekNumber) => {
+    const currentWeekNum = getCurrentWeekNumber();
+    const today = new Date();
+    const currentDayOfWeek = today.getDay();
+    
+    // Calculate the offset in weeks
+    const weekOffset = weekNumber - currentWeekNum;
+    
+    // Calculate the start of the current week (Sunday)
+    const startOfCurrentWeek = new Date(today);
+    startOfCurrentWeek.setDate(today.getDate() - currentDayOfWeek);
+    
+    // Calculate the start of the target week (Sunday)
+    const sunday = new Date(startOfCurrentWeek);
+    sunday.setDate(startOfCurrentWeek.getDate() + (weekOffset * 7));
+    
+    // Calculate Thursday (4 days after Sunday)
+    const thursday = new Date(sunday);
+    thursday.setDate(sunday.getDate() + 4);
+    
+    const formatDate = (date) => {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      return `${day}/${month}`;
+    };
+    
+    return `${formatDate(sunday)} - ${formatDate(thursday)}`;
+  };
+
+  // Generate weeks list, excluding current week (only past weeks)
   const weeks = [];
-  const maxWeek = selectedYear === currentYear ? currentWeekNumber : 52;
+  const maxWeek = selectedYear === currentYear ? currentWeekNumber - 1 : 52;
   for (let i = 1; i <= maxWeek; i++) {
     weeks.push(i);
   }
@@ -177,9 +207,25 @@ function PreviousWeeks({ onClose, isManager }) {
               }}
             >
               <option value="">בחר שבוע</option>
-              {weeks.map(week => (
-                <option key={week} value={week}>שבוע {week}</option>
-              ))}
+              {weeks.map(week => {
+                // Calculate the actual week number for this year and week
+                const startOfYear = new Date(selectedYear, 0, 1);
+                const startDay = startOfYear.getDay();
+                const daysToAdd = (week - 1) * 7;
+                const targetDate = new Date(selectedYear, 0, 1 + daysToAdd - startDay);
+                
+                const daysSinceYearStart = Math.floor((targetDate - startOfYear) / (24 * 60 * 60 * 1000));
+                const adjustedDays = daysSinceYearStart + startDay;
+                const weekNumber = Math.ceil((adjustedDays + 1) / 7);
+                
+                const dateRange = getWeekDateRange(weekNumber);
+                
+                return (
+                  <option key={week} value={week}>
+                    שבוע {week} ({dateRange})
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -237,13 +283,14 @@ function PreviousWeeks({ onClose, isManager }) {
                 </div>
                 <WeeklySchedule
                   weekNumber={weekData.weekNumber}
+                  weekDateRange={getWeekDateRange(weekData.weekNumber)}
                   activities={weekData.activities}
                   isManager={false}
                   onAddActivity={() => {}}
                   onUpdateActivity={() => {}}
                   onDeleteActivity={() => {}}
                   onDayClick={(day) => setSelectedDay(day)}
-                  currentWeekNumber={weekData.weekNumber}
+                  currentWeekNumber={currentWeekNumber}
                 />
                 <div style={{ 
                   marginTop: '20px', 
@@ -296,6 +343,7 @@ function PreviousWeeks({ onClose, isManager }) {
                 <DailyPlan
                   day={selectedDay}
                   activities={weekData.activities[selectedDay] || []}
+                  weekNumber={weekData.weekNumber}
                   onBack={() => setSelectedDay(null)}
                   isManager={false}
                   onUpdateActivity={() => {}}

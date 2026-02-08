@@ -76,13 +76,46 @@ function ActivityModal({ day, activity, onSave, onClose }) {
   const [newVehicle, setNewVehicle] = useState('');
   
   const [editingList, setEditingList] = useState(null); // 'platforms', 'distributions', etc.
+  const [editingProjectIndex, setEditingProjectIndex] = useState(null);
+  const [editingProjectValue, setEditingProjectValue] = useState('');
   const [vehicleAssignments, setVehicleAssignments] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState({
+    platform: false,
+    projectNumber: false,
+    workSite: false,
+    distribution: false
+  });
+  
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if click is outside of any dropdown or input field
+      const isDropdownClick = event.target.closest('.autocomplete-wrapper') || 
+                              event.target.closest('input[name="platform"]') ||
+                              event.target.closest('input[name="projectNumber"]') ||
+                              event.target.closest('input[name="workSite"]') ||
+                              event.target.closest('input[name="distribution"]');
+      
+      if (!isDropdownClick) {
+        setShowSuggestions({
+          platform: false,
+          projectNumber: false,
+          workSite: false,
+          distribution: false
+        });
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     platform: '',
     type: 'אווירי',
     taskName: '',
-    projectName: '',
     startTime: '09:00',
     endTime: '18:00',
     manager: '',
@@ -129,8 +162,7 @@ function ActivityModal({ day, activity, onSave, onClose }) {
         technician: activity.technician || '',
         additionalFactorsOnSite: activity.additionalFactorsOnSite || '',
         engine: activity.engine || '',
-        serialNumber: activity.serialNumber || '',
-        projectName: activity.projectName || ''
+        serialNumber: activity.serialNumber || ''
       };
       setFormData(updatedActivity);
       setVehicleAssignments(activity.vehicleAssignments || []);
@@ -140,6 +172,20 @@ function ActivityModal({ day, activity, onSave, onClose }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updates = { [name]: value };
+    
+    // Auto-open suggestions when typing in autocomplete fields
+    if (['platform', 'projectNumber', 'workSite', 'distribution'].includes(name)) {
+      setShowSuggestions(prev => {
+        const newState = {
+          platform: false,
+          projectNumber: false,
+          workSite: false,
+          distribution: false
+        };
+        newState[name] = true;
+        return newState;
+      });
+    }
     
     // Auto-select heilan based on type
     if (name === 'type') {
@@ -154,6 +200,32 @@ function ActivityModal({ day, activity, onSave, onClose }) {
       ...prev,
       ...updates
     }));
+  };
+
+  // Filter suggestions based on input
+  const getFilteredSuggestions = (field, list) => {
+    const value = formData[field] || '';
+    if (!value) return list;
+    return list.filter(item => 
+      item.toLowerCase().includes(value.toLowerCase())
+    );
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionClick = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setShowSuggestions(prev => ({ ...prev, [field]: false }));
+  };
+
+  // Toggle suggestions and close others
+  const toggleSuggestions = (field) => {
+    setShowSuggestions({
+      platform: false,
+      projectNumber: false,
+      workSite: false,
+      distribution: false,
+      [field]: !showSuggestions[field]
+    });
   };
 
   const handleAddPlatform = () => {
@@ -285,16 +357,25 @@ function ActivityModal({ day, activity, onSave, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.platform || !formData.taskName || !formData.manager || !formData.workSite || !formData.projectNumber) {
-      alert('אנא מלא את כל השדות הנדרשים');
+    
+    const missingFields = [];
+    if (!formData.platform) missingFields.push('פלטפורמה');
+    if (!formData.taskName) missingFields.push('שם המשימה');
+    if (!formData.manager) missingFields.push('מנהל');
+    if (!formData.workSite) missingFields.push('אתר עבודה');
+    if (!formData.projectNumber) missingFields.push('פרויקט');
+    
+    if (missingFields.length > 0) {
+      alert('אנא מלא את השדות החסרים:\n' + missingFields.join('\n'));
       return;
     }
+    
     onSave({ ...formData, vehicleAssignments });
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-content">
         <div className="modal-header">
           <h3>{activity ? 'ערוך פעילות' : 'הוסף פעילות חדשה'} - {day}</h3>
           <button className="close-btn" onClick={onClose}>סגור</button>
@@ -304,18 +385,67 @@ function ActivityModal({ day, activity, onSave, onClose }) {
           <div className="form-group">
             <label>פלטפורמה *</label>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <select
-                name="platform"
-                value={formData.platform}
-                onChange={handleChange}
-                required
-                style={{ flex: 1 }}
-              >
-                <option value="">בחר פלטפורמה</option>
-                {platforms.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+              <div className="autocomplete-wrapper" style={{ flex: 1, position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <input
+                    type="text"
+                    name="platform"
+                    value={formData.platform}
+                    onChange={handleChange}
+                    placeholder="הקלד או בחר פלטפורמה"
+                    required
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid #ddd' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSuggestions('platform')}
+                    style={{
+                      padding: '10px 15px',
+                      background: showSuggestions.platform ? '#dc3545' : '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '16px'
+                    }}
+                  >
+                    {showSuggestions.platform ? '✕' : '▼'}
+                  </button>
+                </div>
+                {showSuggestions.platform && getFilteredSuggestions('platform', platforms).length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'white',
+                    border: '2px solid #667eea',
+                    borderRadius: '8px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    marginTop: '5px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {getFilteredSuggestions('platform', platforms).map(p => (
+                      <div
+                        key={p}
+                        onClick={() => handleSuggestionClick('platform', p)}
+                        style={{
+                          padding: '10px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #eee',
+                          ':hover': { background: '#f0f0f0' }
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                      >
+                        {p}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddPlatform(!showAddPlatform)}
@@ -528,19 +658,67 @@ function ActivityModal({ day, activity, onSave, onClose }) {
           </div>
 
           <div className="form-group">
-            <label>אתר עבודה</label>
+            <label>אתר עבודה *</label>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <select
-                name="workSite"
-                value={formData.workSite}
-                onChange={handleChange}
-                style={{ flex: 1 }}
-              >
-                <option value="">בחר אתר עבודה</option>
-                {workSites.map(w => (
-                  <option key={w} value={w}>{w}</option>
-                ))}
-              </select>
+              <div className="autocomplete-wrapper" style={{ flex: 1, position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <input
+                    type="text"
+                    name="workSite"
+                    value={formData.workSite}
+                    onChange={handleChange}
+                    placeholder="הקלד או בחר אתר עבודה"
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid #ddd' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSuggestions('workSite')}
+                    style={{
+                      padding: '10px 15px',
+                      background: showSuggestions.workSite ? '#dc3545' : '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '16px'
+                    }}
+                  >
+                    {showSuggestions.workSite ? '✕' : '▼'}
+                  </button>
+                </div>
+                {showSuggestions.workSite && getFilteredSuggestions('workSite', workSites).length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'white',
+                    border: '2px solid #667eea',
+                    borderRadius: '8px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    marginTop: '5px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {getFilteredSuggestions('workSite', workSites).map(w => (
+                      <div
+                        key={w}
+                        onClick={() => handleSuggestionClick('workSite', w)}
+                        style={{
+                          padding: '10px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #eee'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                      >
+                        {w}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddWorkSite(!showAddWorkSite)}
@@ -622,19 +800,67 @@ function ActivityModal({ day, activity, onSave, onClose }) {
           </div>
 
           <div className="form-group">
-            <label>מס' פרויקט</label>
+            <label>פרויקט *</label>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <select
-                name="projectNumber"
-                value={formData.projectNumber}
-                onChange={handleChange}
-                style={{ flex: 1 }}
-              >
-                <option value="">בחר מספר פרויקט</option>
-                {projectNumbers.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+              <div className="autocomplete-wrapper" style={{ flex: 1, position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <input
+                    type="text"
+                    name="projectNumber"
+                    value={formData.projectNumber}
+                    onChange={handleChange}
+                    placeholder="הקלד או בחר מספר פרויקט"
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid #ddd' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSuggestions('projectNumber')}
+                    style={{
+                      padding: '10px 15px',
+                      background: showSuggestions.projectNumber ? '#dc3545' : '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '16px'
+                    }}
+                  >
+                    {showSuggestions.projectNumber ? '✕' : '▼'}
+                  </button>
+                </div>
+                {showSuggestions.projectNumber && getFilteredSuggestions('projectNumber', projectNumbers).length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'white',
+                    border: '2px solid #667eea',
+                    borderRadius: '8px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    marginTop: '5px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {getFilteredSuggestions('projectNumber', projectNumbers).map(p => (
+                      <div
+                        key={p}
+                        onClick={() => handleSuggestionClick('projectNumber', p)}
+                        style={{
+                          padding: '10px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #eee'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                      >
+                        {p}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddProject(!showAddProject)}
@@ -670,7 +896,7 @@ function ActivityModal({ day, activity, onSave, onClose }) {
                   type="text"
                   value={newProject}
                   onChange={(e) => setNewProject(e.target.value)}
-                  placeholder="מספר פרויקט חדש"
+                  placeholder="פרויקט חדש"
                   style={{ flex: 1 }}
                 />
                 <button
@@ -691,10 +917,65 @@ function ActivityModal({ day, activity, onSave, onClose }) {
             )}
             {editingList === 'projectNumbers' && (
               <div style={{ marginTop: '10px', padding: '10px', background: '#f8f9fa', borderRadius: '8px' }}>
-                <h4 style={{ marginBottom: '10px' }}>ערוך מספרי פרויקט</h4>
-                {projectNumbers.map(proj => (
-                  <div key={proj} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' }}>
-                    <span>{proj}</span>
+                <h4 style={{ marginBottom: '10px' }}>ערוך פרויקט</h4>
+                {projectNumbers.map((proj, index) => (
+                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', gap: '10px' }}>
+                    {editingProjectIndex === index ? (
+                      <input
+                        type="text"
+                        value={editingProjectValue}
+                        onChange={(e) => setEditingProjectValue(e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '5px'
+                        }}
+                        autoFocus
+                      />
+                    ) : (
+                      <span style={{ flex: 1 }}>{proj}</span>
+                    )}
+                    {editingProjectIndex === index ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newProjects = [...projectNumbers];
+                          newProjects[index] = editingProjectValue;
+                          setProjectNumbers(newProjects);
+                          setEditingProjectIndex(null);
+                          setEditingProjectValue('');
+                        }}
+                        style={{
+                          padding: '5px 10px',
+                          background: '#28a745',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        שמור
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingProjectIndex(index);
+                          setEditingProjectValue(proj);
+                        }}
+                        style={{
+                          padding: '5px 10px',
+                          background: '#ffc107',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ערוך
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleDeleteFromList('projectNumbers', proj)}
@@ -713,17 +994,6 @@ function ActivityModal({ day, activity, onSave, onClose }) {
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="form-group">
-            <label>שם פרויקט</label>
-            <input
-              type="text"
-              name="projectName"
-              value={formData.projectName}
-              onChange={handleChange}
-              placeholder="שם הפרויקט"
-            />
           </div>
 
           <div className="form-group">
@@ -838,17 +1108,65 @@ function ActivityModal({ day, activity, onSave, onClose }) {
           <div className="form-group">
             <label>תפוצה</label>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <select
-                name="distribution"
-                value={formData.distribution}
-                onChange={handleChange}
-                style={{ flex: 1 }}
-              >
-                <option value="">בחר רשימת תפוצה</option>
-                {distributions.map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              <div className="autocomplete-wrapper" style={{ flex: 1, position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <input
+                    type="text"
+                    name="distribution"
+                    value={formData.distribution}
+                    onChange={handleChange}
+                    placeholder="הקלד או בחר רשימת תפוצה"
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid #ddd' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSuggestions('distribution')}
+                    style={{
+                      padding: '10px 15px',
+                      background: showSuggestions.distribution ? '#dc3545' : '#667eea',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '16px'
+                    }}
+                  >
+                    {showSuggestions.distribution ? '✕' : '▼'}
+                  </button>
+                </div>
+                {showSuggestions.distribution && getFilteredSuggestions('distribution', distributions).length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'white',
+                    border: '2px solid #667eea',
+                    borderRadius: '8px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    marginTop: '5px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                  }}>
+                    {getFilteredSuggestions('distribution', distributions).map(d => (
+                      <div
+                        key={d}
+                        onClick={() => handleSuggestionClick('distribution', d)}
+                        style={{
+                          padding: '10px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #eee'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                      >
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddDistribution(!showAddDistribution)}
