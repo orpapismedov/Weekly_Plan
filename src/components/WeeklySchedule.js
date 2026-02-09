@@ -186,29 +186,8 @@ function WeeklySchedule({ weekNumber, weekDateRange, activities, isManager, onAd
     <div className="weekly-schedule">
       <div className="week-header week-header-container">
         <div className="week-header-content">
-          <h2 style={{ fontSize: '2em', margin: 0, fontWeight: '700', color: '#333' }}>תכנית שבועית</h2>
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            gap: '2px'
-          }}>
-            <div style={{ 
-              fontSize: '1.8em', 
-              color: '#000', 
-              fontWeight: '800',
-              lineHeight: '1.2'
-            }}>
-              שבוע {weekNumber}
-            </div>
-            <div style={{ 
-              fontSize: '1em', 
-              fontWeight: '500', 
-              color: '#666',
-              lineHeight: '1.2'
-            }}>
-              {weekDateRange}
-            </div>
+          <div style={{ fontSize: '1.5em', fontWeight: '700', color: '#333' }}>
+            תכנית שבועית - שבוע {weekNumber} : {weekDateRange}
           </div>
         </div>
         <div className="filter-button-row" style={{ position: 'relative' }}>

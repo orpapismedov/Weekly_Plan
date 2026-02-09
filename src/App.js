@@ -55,7 +55,7 @@ function getWeekDateRange(weekNumber) {
     return `${day}/${month}`;
   };
   
-  return `${formatDate(sunday)} - ${formatDate(thursday)}`;
+  return `${formatDate(thursday)} - ${formatDate(sunday)}`;
 }
 
 function initializeWeekActivities() {
@@ -82,6 +82,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [publishedWeekOffset, setPublishedWeekOffset] = useState(0); // 0 = current week, 1 = next week (for users)
   const [rememberMe, setRememberMe] = useState(false); // NEW: Remember me checkbox state
+  const [showPassword, setShowPassword] = useState(false); // NEW: Show/hide password toggle
+  const [showManagerPassword, setShowManagerPassword] = useState(false); // NEW: Show/hide manager password toggle
   
   // Load week data from Firebase or initialize
   const loadWeekData = async (offset) => {
@@ -584,25 +586,43 @@ function App() {
               color: '#666',
               fontSize: '16px'
             }}>תכנון פעילות שבועית - מבצעי אוויר</p>
-            <input
-              type="password"
-              placeholder="הכנס סיסמה"
-              style={{
-                width: '100%',
-                padding: '12px',
-                fontSize: '16px',
-                border: '2px solid #ddd',
-                borderRadius: '8px',
-                marginBottom: '15px',
-                textAlign: 'center',
-                direction: 'rtl'
-              }}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handlePasswordSubmit(e.target.value, true);
-                }
-              }}
-            />
+            <div style={{ position: 'relative', marginBottom: '15px' }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="הכנס סיסמה"
+                style={{
+                  width: '100%',
+                  padding: '12px 45px 12px 12px',
+                  fontSize: '16px',
+                  border: '2px solid #ddd',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  direction: 'rtl'
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePasswordSubmit(e.target.value, true);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  left: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  padding: '0 5px'
+                }}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -635,7 +655,7 @@ function App() {
             </div>
             <button
               onClick={(e) => {
-                const input = e.target.previousElementSibling.previousElementSibling;
+                const input = e.target.previousElementSibling.previousElementSibling.querySelector('input');
                 handlePasswordSubmit(input.value, true);
               }}
               style={{
@@ -643,7 +663,7 @@ function App() {
                 padding: '12px',
                 fontSize: '18px',
                 fontWeight: 'bold',
-                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                background: 'linear-gradient(135deg, #ff6347 0%, #dc2626 25%, #1a1a1a 75%, #000000 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -788,6 +808,23 @@ function App() {
           >
             מידע נוסף
           </button>
+          <button 
+            className={viewMode === 'manager' ? 'active' : ''}
+            onClick={handleManagerModeClick}
+            style={{
+              marginLeft: '10px',
+              padding: '10px 20px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              minWidth: '180px',
+              gridColumn: '4',
+              gridRow: '1'
+            }}
+          >
+            {viewMode === 'manager' ? 'חזור למשתמש' : 'מנהל'}
+          </button>
           {viewMode === 'manager' && (
             <button 
               onClick={exportToExcel}
@@ -801,44 +838,35 @@ function App() {
                 cursor: 'pointer',
                 fontSize: '14px',
                 fontWeight: 'bold',
-                minWidth: '180px'
+                minWidth: '180px',
+                gridColumn: '4',
+                gridRow: '2'
               }}
             >
-              📊 ייצוא לאקסל
+              ייצוא לאקסל
             </button>
           )}
-          <button 
-            className={viewMode === 'manager' ? 'active' : ''}
-            onClick={handleManagerModeClick}
-            style={{
-              marginLeft: '10px',
-              padding: '10px 20px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              minWidth: '180px'
-            }}
-          >
-            {viewMode === 'manager' ? 'חזור למשתמש' : 'מנהל'}
-          </button>
-          <button 
-            onClick={handleLogout}
-            style={{
-              marginLeft: '10px',
-              padding: '10px 20px',
-              background: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              minWidth: '100px'
-            }}
-          >
-            🚪 התנתק
-          </button>
+          {viewMode !== 'manager' && (
+            <button 
+              onClick={handleLogout}
+              style={{
+                marginLeft: '10px',
+                padding: '10px 20px',
+                background: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                minWidth: '100px',
+                gridColumn: '4',
+                gridRow: '2'
+              }}
+            >
+              התנתק
+            </button>
+          )}
         </div>
       </header>
 
@@ -878,20 +906,39 @@ function App() {
                 ✕
               </button>
             </div>
-            <input
-              type="password"
-              placeholder="סיסמה"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handlePasswordSubmit(e.target.value);
-                }
-              }}
-              autoFocus
-              style={{ width: '100%', padding: '12px', fontSize: '16px' }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showManagerPassword ? "text" : "password"}
+                placeholder="סיסמה"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePasswordSubmit(e.target.value);
+                  }
+                }}
+                autoFocus
+                style={{ width: '100%', padding: '12px 45px 12px 12px', fontSize: '16px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowManagerPassword(!showManagerPassword)}
+                style={{
+                  position: 'absolute',
+                  left: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  padding: '0 5px'
+                }}
+              >
+                {showManagerPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
             <button 
               onClick={(e) => {
-                const input = e.target.previousSibling;
+                const input = e.target.previousSibling.querySelector('input');
                 handlePasswordSubmit(input.value);
               }}
               className="submit-btn"
