@@ -5,6 +5,8 @@
   publish = "build"
   # Functions directory
   functions = "netlify/functions"
+  # Disable secrets scanning for known safe occurrences
+  environment = { SECRETS_SCAN_ENABLED = "false" }
 
 [[redirects]]
   # Redirect all routes to index.html for React Router

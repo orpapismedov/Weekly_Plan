@@ -354,7 +354,7 @@ function App() {
     try {
       // TEMPORARY: For localhost testing, use hardcoded password
       // After setting up Netlify, replace 'YOUR-SITE-NAME' with your actual Netlify site name
-      const NETLIFY_FUNCTION_URL = 'https://YOUR-SITE-NAME.netlify.app/.netlify/functions/validate-password';
+      const NETLIFY_FUNCTION_URL = 'https://weeklyplan1.netlify.app/.netlify/functions/validate-password';
       
       // Temporary localhost fallback
       if (NETLIFY_FUNCTION_URL.includes('YOUR-SITE-NAME')) {
