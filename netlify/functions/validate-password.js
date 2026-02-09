@@ -32,20 +32,36 @@ exports.handler = async (event, context) => {
     // Get the password from request body
     const { password } = JSON.parse(event.body);
     
-    // Get the correct password from environment variable (set in Netlify dashboard)
-    const CORRECT_PASSWORD = process.env.MANAGER_PASSWORD || 'weekly';
+    // Get passwords from environment variables (set in Netlify dashboard)
+    const MANAGER_PASSWORD = process.env.MANAGER_PASSWORD || 'weekly';
+    const USER_PASSWORD = process.env.USER_PASSWORD || 'user123';
     
-    // Compare passwords
-    if (password === CORRECT_PASSWORD) {
+    // Check if it's the manager password
+    if (password === MANAGER_PASSWORD) {
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({ 
           valid: true,
-          message: 'Password correct' 
+          role: 'manager',
+          message: 'Manager access granted' 
         })
       };
-    } else {
+    } 
+    // Check if it's the user password
+    else if (password === USER_PASSWORD) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          valid: true,
+          role: 'user',
+          message: 'User access granted' 
+        })
+      };
+    } 
+    // Password doesn't match either
+    else {
       return {
         statusCode: 200,
         headers,

@@ -4,6 +4,7 @@ import WeeklySchedule from './components/WeeklySchedule';
 import DailyPlan from './components/DailyPlan';
 import UserSearch from './components/UserSearch';
 import Suppliers from './components/Suppliers';
+import DealerNumbers from './components/DealerNumbers';
 import MealsLink from './components/MealsLink';
 import AdditionalInfo from './components/AdditionalInfo';
 import FrequencyTable from './components/FrequencyTable';
@@ -67,10 +68,12 @@ function initializeWeekActivities() {
 }
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // NEW: Site-wide authentication
   const [viewMode, setViewMode] = useState('user'); // 'manager' or 'user'
   const [selectedDay, setSelectedDay] = useState(null);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [showSuppliers, setShowSuppliers] = useState(false);
+  const [showDealerNumbers, setShowDealerNumbers] = useState(false);
   const [showMealsLink, setShowMealsLink] = useState(false);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [showFrequencyTable, setShowFrequencyTable] = useState(false);
@@ -78,6 +81,7 @@ function App() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week, 1 = next week, 2 = week after
   const [loading, setLoading] = useState(true);
   const [publishedWeekOffset, setPublishedWeekOffset] = useState(0); // 0 = current week, 1 = next week (for users)
+  const [rememberMe, setRememberMe] = useState(false); // NEW: Remember me checkbox state
   
   // Load week data from Firebase or initialize
   const loadWeekData = async (offset) => {
@@ -109,6 +113,18 @@ function App() {
   // Load initial data from Firebase
   useEffect(() => {
     const initializeData = async () => {
+      // Check if user is already authenticated (from localStorage)
+      const savedAuth = localStorage.getItem('weeklyplan_auth');
+      if (savedAuth) {
+        try {
+          const authData = JSON.parse(savedAuth);
+          setIsAuthenticated(true);
+          setViewMode(authData.role || 'user');
+        } catch (error) {
+          localStorage.removeItem('weeklyplan_auth');
+        }
+      }
+      
       setLoading(true);
       
       // Load published week offset
@@ -350,7 +366,7 @@ function App() {
     }
   };
 
-  const handlePasswordSubmit = async (password) => {
+  const handlePasswordSubmit = async (password, isInitialAuth = false) => {
     try {
       // TEMPORARY: For localhost testing, use hardcoded password
       // After setting up Netlify, replace 'YOUR-SITE-NAME' with your actual Netlify site name
@@ -359,8 +375,21 @@ function App() {
       // Temporary localhost fallback
       if (NETLIFY_FUNCTION_URL.includes('YOUR-SITE-NAME')) {
         if (password === 'weekly') {
+          if (isInitialAuth) {
+            setIsAuthenticated(true);
+            if (rememberMe) {
+              localStorage.setItem('weeklyplan_auth', JSON.stringify({ role: 'manager' }));
+            }
+          }
           setViewMode('manager');
           setShowPasswordPrompt(false);
+          return true;
+        } else if (password === 'user123' && isInitialAuth) {
+          setIsAuthenticated(true);
+          setViewMode('user');
+          if (rememberMe) {
+            localStorage.setItem('weeklyplan_auth', JSON.stringify({ role: 'user' }));
+          }
           return true;
         } else {
           alert('סיסמה שגויה!');
@@ -379,15 +408,30 @@ function App() {
       const data = await response.json();
       
       if (data.valid) {
-        setViewMode('manager');
+        if (isInitialAuth) {
+          setIsAuthenticated(true);
+          if (rememberMe) {
+            localStorage.setItem('weeklyplan_auth', JSON.stringify({ role: data.role }));
+          }
+        }
+        setViewMode(data.role || 'manager');
         setShowPasswordPrompt(false);
+        return true;
       } else {
         alert('סיסמה שגויה!');
+        return false;
       }
     } catch (error) {
       console.error('Error validating password:', error);
       alert('שגיאה בבדיקת הסיסמה');
+      return false;
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('weeklyplan_auth');
+    setIsAuthenticated(false);
+    setViewMode('user');
   };
 
   const exportToExcel = () => {
@@ -495,6 +539,134 @@ function App() {
         zIndex: 0
       }}></div>
 
+      {/* Initial Password Screen */}
+      {!isAuthenticated && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #ff6347 0%, #dc2626 25%, #1a1a1a 75%, #000000 100%)',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '40px',
+            borderRadius: '15px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}>
+            <img 
+              src={`${process.env.PUBLIC_URL}/aeronautics-logo.svg`}
+              alt="Aeronautics Logo" 
+              style={{
+                height: '80px',
+                width: 'auto',
+                marginBottom: '20px'
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <h2 style={{ 
+              marginBottom: '10px',
+              color: '#333',
+              fontSize: '24px'
+            }}>🔒 גישה מוגבלת</h2>
+            <p style={{ 
+              marginBottom: '25px',
+              color: '#666',
+              fontSize: '16px'
+            }}>תכנון פעילות שבועית - מבצעי אוויר</p>
+            <input
+              type="password"
+              placeholder="הכנס סיסמה"
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '16px',
+                border: '2px solid #ddd',
+                borderRadius: '8px',
+                marginBottom: '15px',
+                textAlign: 'center',
+                direction: 'rtl'
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handlePasswordSubmit(e.target.value, true);
+                }
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '20px',
+              gap: '8px'
+            }}>
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer'
+                }}
+              />
+              <label 
+                htmlFor="rememberMe" 
+                style={{ 
+                  color: '#666',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
+                זכור אותי
+              </label>
+            </div>
+            <button
+              onClick={(e) => {
+                const input = e.target.previousElementSibling.previousElementSibling;
+                handlePasswordSubmit(input.value, true);
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'transform 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+            >
+              כניסה
+            </button>
+            <p style={{
+              marginTop: '20px',
+              color: '#999',
+              fontSize: '12px'
+            }}>
+              יש לך סיסמת מנהל או סיסמת משתמש<br/>
+              לצפייה בלבד, הכנס את סיסמת המשתמש
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="App" style={{ position: 'relative', zIndex: 10, minHeight: '100vh' }}>
         <header className="app-header">
           <div className="logo-section">
@@ -566,6 +738,23 @@ function App() {
             ספקים
           </button>
           <button 
+            onClick={() => setShowDealerNumbers(true)}
+            style={{
+              marginLeft: '10px',
+              padding: '10px 20px',
+              background: '#6f42c1',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              minWidth: '180px'
+            }}
+          >
+            טבלת מספרי סחרן
+          </button>
+          <button 
             onClick={() => setShowMealsLink(true)}
             style={{
               marginLeft: '10px',
@@ -632,6 +821,23 @@ function App() {
             }}
           >
             {viewMode === 'manager' ? 'חזור למשתמש' : 'מנהל'}
+          </button>
+          <button 
+            onClick={handleLogout}
+            style={{
+              marginLeft: '10px',
+              padding: '10px 20px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              minWidth: '100px'
+            }}
+          >
+            🚪 התנתק
           </button>
         </div>
       </header>
@@ -846,6 +1052,13 @@ function App() {
           onClose={() => setShowSuppliers(false)}
           suppliers={suppliers}
           setSuppliers={setSuppliers}
+        />
+      )}
+
+      {showDealerNumbers && (
+        <DealerNumbers 
+          isManager={viewMode === 'manager'} 
+          onClose={() => setShowDealerNumbers(false)}
         />
       )}
 

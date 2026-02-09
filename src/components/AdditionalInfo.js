@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 function AdditionalInfo({ isManager, onClose, data, setData }) {
   // Local state for form inputs only
-  const [newPlatform, setNewPlatform] = useState({ platform: '', caaValidity: '' });
+  const [newPlatform, setNewPlatform] = useState({ platform: '', configPage: '', caaValidity: '' });
   const [newWorkSite, setNewWorkSite] = useState({ site: '', deploymentLink: '', siteFolder: '' });
   const [newPhone, setNewPhone] = useState({ area: '', name: '', phone: '' });
 
@@ -13,7 +13,7 @@ function AdditionalInfo({ isManager, onClose, data, setData }) {
         ...data,
         platforms: [...data.platforms, { ...newPlatform, id: Date.now() }]
       });
-      setNewPlatform({ platform: '', caaValidity: '' });
+      setNewPlatform({ platform: '', configPage: '', caaValidity: '' });
     }
   };
 
@@ -50,7 +50,7 @@ function AdditionalInfo({ isManager, onClose, data, setData }) {
           
           {isManager && (
             <form onSubmit={handleAddPlatform} style={{ marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>פלטפורמה:</label>
                   <input
@@ -59,6 +59,16 @@ function AdditionalInfo({ isManager, onClose, data, setData }) {
                     onChange={(e) => setNewPlatform({ ...newPlatform, platform: e.target.value })}
                     placeholder="שם הפלטפורמה"
                     required
+                    style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>דף תצורה:</label>
+                  <input
+                    type="url"
+                    value={newPlatform.configPage}
+                    onChange={(e) => setNewPlatform({ ...newPlatform, configPage: e.target.value })}
+                    placeholder="https://example.com"
                     style={{ width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px' }}
                   />
                 </div>
@@ -84,17 +94,27 @@ function AdditionalInfo({ isManager, onClose, data, setData }) {
             <thead>
               <tr style={{ background: '#667eea', color: 'white' }}>
                 <th style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd' }}>פלטפורמה</th>
+                <th style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd' }}>דף תצורה</th>
                 <th style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd' }}>תוקף תעודת רת"א</th>
                 {isManager && <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #ddd', width: '100px' }}>פעולות</th>}
               </tr>
             </thead>
             <tbody>
               {data.platforms.length === 0 ? (
-                <tr><td colSpan={isManager ? 3 : 2} style={{ padding: '15px', textAlign: 'center', color: '#999' }}>אין נתונים</td></tr>
+                <tr><td colSpan={isManager ? 4 : 3} style={{ padding: '15px', textAlign: 'center', color: '#999' }}>אין נתונים</td></tr>
               ) : (
                 data.platforms.map(p => (
                   <tr key={p.id}>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>{p.platform}</td>
+                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                      {p.configPage ? (
+                        <a href={p.configPage} target="_blank" rel="noopener noreferrer" style={{ color: '#667eea', textDecoration: 'underline' }}>
+                          {p.configPage}
+                        </a>
+                      ) : (
+                        <span style={{ color: '#999' }}>-</span>
+                      )}
+                    </td>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>{p.caaValidity}</td>
                     {isManager && (
                       <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>

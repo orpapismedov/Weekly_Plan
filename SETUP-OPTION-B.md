@@ -54,18 +54,26 @@ git push
 
 ---
 
-## STEP 5: Set Your Password in Netlify (2 minutes)
+## STEP 5: Set Your Passwords in Netlify (3 minutes)
 
 1. In your site's dashboard, click **"Site settings"**
 2. In left sidebar, click **"Environment variables"**
-3. Click **"Add a variable"**
-4. Enter:
+3. Click **"Add a variable"** to add the **MANAGER password**:
    - **Key**: `MANAGER_PASSWORD`
-   - **Value**: `weekly` (or choose a new secure password)
+   - **Value**: `weekly` (or choose a new secure password for managers)
    - **Scopes**: Leave all checked
-5. Click **"Create variable"**
-6. Go back to main dashboard
-7. Click **"Trigger deploy"** → **"Deploy site"** (to apply the variable)
+4. Click **"Create variable"**
+5. Click **"Add a variable"** again to add the **USER password**:
+   - **Key**: `USER_PASSWORD`
+   - **Value**: `user123` (or choose a secure password for regular users)
+   - **Scopes**: Leave all checked
+6. Click **"Create variable"**
+7. Go back to main dashboard
+8. Click **"Trigger deploy"** → **"Deploy site"** (to apply the variables)
+
+**What's the difference?**
+- **USER_PASSWORD**: Regular users can view the weekly plans (read-only)
+- **MANAGER_PASSWORD**: Managers can edit everything
 
 ---
 
@@ -105,29 +113,46 @@ npm run deploy
 ## STEP 8: Test It! (1 minute)
 
 1. Go to your GitHub Pages site: `https://orpapismedov.github.io/Weekly_Plan/`
-2. Try to access manager mode
-3. Enter your password
-4. **It should work!** ✅
+2. You should see a password screen 🔒
+3. **Test USER access:**
+   - Enter your user password (default: `user123`)
+   - Check "זכור אותי" (Remember me) if you want
+   - You should see the app in **view-only mode** ✅
+4. **Test MANAGER access:**
+   - Click "התנתק" (Logout) button
+   - Enter your manager password (default: `weekly`)
+   - You should see the app in **manager mode** with edit capabilities ✅
 
-The password is now validated on Netlify's server - completely secure!
+The site is now fully protected! 🛡️
 
 ---
 
 ## How It Works
 
 ```
-User visits: https://orpapismedov.github.io/Weekly_Plan/ (GitHub Pages)
+User visits: https://orpapismedov.github.io/Weekly_Plan/
          ↓
-Manager enters password
+Password screen appears 🔒
          ↓
-App sends to: https://your-site.netlify.app/.netlify/functions/validate-password
+User enters password (user or manager)
          ↓
-Netlify server checks password (hidden, secure)
+App sends to: https://weeklyplan1.netlify.app/.netlify/functions/validate-password
          ↓
-Returns valid/invalid
+Netlify checks password → Returns role (user/manager)
          ↓
-App grants/denies access
+App shows content based on role:
+  - User password → View-only mode 👁️
+  - Manager password → Full edit access ✏️
+         ↓
+"Remember me" saves login → Skip password next time
 ```
+
+**Security Features:**
+- ✅ Entire site protected (no one can see without password)
+- ✅ Two access levels (user view-only + manager edit)
+- ✅ Remember me functionality (optional)
+- ✅ Passwords stored securely on Netlify (never exposed)
+- ✅ Logout button to switch users
 
 ---
 
@@ -154,13 +179,21 @@ App grants/denies access
 
 ---
 
-## Changing the Password Later
+## Changing the Passwords Later
 
+**To change the manager password:**
 1. Go to Netlify dashboard
 2. Site settings → Environment variables
 3. Edit `MANAGER_PASSWORD`
 4. Save (site will redeploy automatically)
-5. **No code changes needed!**
+
+**To change the user password:**
+1. Go to Netlify dashboard
+2. Site settings → Environment variables
+3. Edit `USER_PASSWORD`
+4. Save (site will redeploy automatically)
+
+**No code changes needed!**
 
 ---
 
@@ -168,10 +201,16 @@ App grants/denies access
 
 ✅ Your app: GitHub Pages (free)
 ✅ Password validation: Netlify Function (free, secure)
-✅ Users **cannot** see password in code
+✅ **Entire site protected** - password required for all visitors
+✅ **Two access levels:**
+   - User password → View-only mode 👁️
+   - Manager password → Full edit access ✏️
+✅ **Remember me** - optional auto-login
+✅ Users **cannot** see passwords in code
 ✅ Users **cannot** access Netlify function directly
 ✅ Database still protected by Firebase rules
-✅ Security: 9/10 🛡️
+✅ Logout button to switch between users
+✅ Security: **9/10** 🛡️
 
-**Total time: ~15 minutes**
+**Total time: ~20 minutes**
 **Monthly cost: $0 (100% free)**

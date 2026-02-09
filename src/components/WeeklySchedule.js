@@ -507,7 +507,18 @@ function WeeklySchedule({ weekNumber, weekDateRange, activities, isManager, onAd
                 }
                 
                 return typeMatch && categoryMatch && platformMatch;
-              }).map(activity => (
+              })
+              .sort((a, b) => {
+                // Define priority: flight=0, mant=1, abroad=2
+                const getPriority = (activity) => {
+                  if (!activity.activityType || activity.activityType === 'flight') return 0;
+                  if (activity.activityType === 'mant') return 1;
+                  if (activity.activityType === 'abroad') return 2;
+                  return 3; // fallback for any other type
+                };
+                return getPriority(a) - getPriority(b);
+              })
+              .map(activity => (
                 <div 
                   key={activity.id} 
                   className="activity-card"
@@ -715,7 +726,7 @@ function WeeklySchedule({ weekNumber, weekDateRange, activities, isManager, onAd
                     </>
                   ) : null}
                   {isManager && (
-                    <div style={{ marginTop: '10px', display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                    <div style={{ marginTop: '10px', display: 'flex', gap: '5px', justifyContent: 'center' }}>
                       <button 
                         className="edit-btn"
                         onClick={(e) => handleEditClick(day, activity, e)}
