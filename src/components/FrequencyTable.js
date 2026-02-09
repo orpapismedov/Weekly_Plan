@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 function FrequencyTable({ onClose, isManager }) {
+  // eslint-disable-next-line no-unused-vars
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isZoomed, setIsZoomed] = useState(false);

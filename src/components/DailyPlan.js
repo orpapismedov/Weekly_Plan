@@ -147,16 +147,16 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
     return false;
   };
 
-  // Location coordinates (accurate Israeli military bases/areas)
-  const locations = {
-    kziot: { lat: 31.2167, lon: 34.4667, name: 'קציעות', region: 'נגב דרומי' },
-    gvulot: { lat: 31.3667, lon: 34.4167, name: 'גבולות', region: 'נגב מערבי' },
-    shivta: { lat: 30.8833, lon: 34.6333, name: 'שבטה', region: 'נגב מרכזי' },
-    ramatDavid: { lat: 32.6650, lon: 35.1794, name: 'רמת דוד', region: 'עמק יזרעאל' }
-  };
-
   // Fetch weather data on component mount
   useEffect(() => {
+    // Location coordinates (accurate Israeli military bases/areas)
+    const locations = {
+      kziot: { lat: 31.2167, lon: 34.4667, name: 'קציעות', region: 'נגב דרומי' },
+      gvulot: { lat: 31.3667, lon: 34.4167, name: 'גבולות', region: 'נגב מערבי' },
+      shivta: { lat: 30.8833, lon: 34.6333, name: 'שבטה', region: 'נגב מרכזי' },
+      ramatDavid: { lat: 32.6650, lon: 35.1794, name: 'רמת דוד', region: 'עמק יזרעאל' }
+    };
+
     const fetchWeather = async () => {
       // Using OpenWeatherMap API (free tier)
       const API_KEY = 'demo'; // Replace with actual API key
@@ -274,7 +274,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
     };
 
     fetchWeather();
-  }, [day, locations]);
+  }, [day]);
 
   const getWindDirection = (degrees) => {
     const directions = ['צפון', 'צפון-מזרח', 'מזרח', 'דרום-מזרח', 'דרום', 'דרום-מערב', 'מערב', 'צפון-מערב'];

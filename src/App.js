@@ -352,9 +352,21 @@ function App() {
 
   const handlePasswordSubmit = async (password) => {
     try {
-      // Call backend function on Netlify
+      // TEMPORARY: For localhost testing, use hardcoded password
       // After setting up Netlify, replace 'YOUR-SITE-NAME' with your actual Netlify site name
       const NETLIFY_FUNCTION_URL = 'https://YOUR-SITE-NAME.netlify.app/.netlify/functions/validate-password';
+      
+      // Temporary localhost fallback
+      if (NETLIFY_FUNCTION_URL.includes('YOUR-SITE-NAME')) {
+        if (password === 'weekly') {
+          setViewMode('manager');
+          setShowPasswordPrompt(false);
+          return true;
+        } else {
+          alert('סיסמה שגויה!');
+          return false;
+        }
+      }
       
       const response = await fetch(NETLIFY_FUNCTION_URL, {
         method: 'POST',
