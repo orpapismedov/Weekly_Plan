@@ -2,10 +2,28 @@
 // Password is stored as environment variable, never exposed to users
 
 exports.handler = async (event, context) => {
+  // CORS headers for all responses
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
+  // Handle preflight OPTIONS request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
@@ -21,10 +39,7 @@ exports.handler = async (event, context) => {
     if (password === CORRECT_PASSWORD) {
       return {
         statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*', // Allow your GitHub Pages to call this
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({ 
           valid: true,
           message: 'Password correct' 
@@ -33,10 +48,7 @@ exports.handler = async (event, context) => {
     } else {
       return {
         statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({ 
           valid: false,
           message: 'Incorrect password' 
@@ -46,10 +58,7 @@ exports.handler = async (event, context) => {
   } catch (error) {
     return {
       statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify({ error: 'Internal server error' })
     };
   }
