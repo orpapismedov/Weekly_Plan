@@ -1,0 +1,13 @@
+[build]
+  # Build command for React app
+  command = "npm run build"
+  # Output directory
+  publish = "build"
+  # Functions directory
+  functions = "netlify/functions"
+
+[[redirects]]
+  # Redirect all routes to index.html for React Router
+  from = "/*"
+  to = "/index.html"
+  status = 200

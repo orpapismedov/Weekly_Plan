@@ -350,12 +350,31 @@ function App() {
     }
   };
 
-  const handlePasswordSubmit = (password) => {
-    if (password === 'weekly') {
-      setViewMode('manager');
-      setShowPasswordPrompt(false);
-    } else {
-      alert('סיסמה שגויה!');
+  const handlePasswordSubmit = async (password) => {
+    try {
+      // Call backend function on Netlify
+      // After setting up Netlify, replace 'YOUR-SITE-NAME' with your actual Netlify site name
+      const NETLIFY_FUNCTION_URL = 'https://YOUR-SITE-NAME.netlify.app/.netlify/functions/validate-password';
+      
+      const response = await fetch(NETLIFY_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.valid) {
+        setViewMode('manager');
+        setShowPasswordPrompt(false);
+      } else {
+        alert('סיסמה שגויה!');
+      }
+    } catch (error) {
+      console.error('Error validating password:', error);
+      alert('שגיאה בבדיקת הסיסמה');
     }
   };
 
