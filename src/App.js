@@ -155,7 +155,7 @@ function App() {
       }
     };
     resetUserView();
-  }, [viewMode, publishedWeekOffset]);
+  }, [viewMode, publishedWeekOffset, currentWeekOffset]);
 
   // Persistent state for utility components - Load from Firebase
   const [suppliers, setSuppliers] = useState([]);

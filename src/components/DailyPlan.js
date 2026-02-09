@@ -16,7 +16,6 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
   });
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [showExtraDetails, setShowExtraDetails] = useState(false);
   const [expandedActivity, setExpandedActivity] = useState(null);
   const [vehiclePopupActivity, setVehiclePopupActivity] = useState(null);
   const [expandedVehicles, setExpandedVehicles] = useState(null);
@@ -275,7 +274,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
     };
 
     fetchWeather();
-  }, [day]);
+  }, [day, locations]);
 
   const getWindDirection = (degrees) => {
     const directions = ['צפון', 'צפון-מזרח', 'מזרח', 'דרום-מזרח', 'דרום', 'דרום-מערב', 'מערב', 'צפון-מערב'];
