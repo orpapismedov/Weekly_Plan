@@ -623,6 +623,20 @@ function WeeklySchedule({ weekNumber, weekDateRange, activities, isManager, onAd
                             ⚠️ לא נבחר רכב
                           </div>
                         )}
+                        {/* Show red warning if serial number is missing for אווירי activities */}
+                        {activity.type === 'אווירי' && !activity.serialNumber && (
+                          <div style={{ 
+                            background: '#ffcccc', 
+                            padding: '4px', 
+                            borderRadius: '4px',
+                            fontSize: '0.85em',
+                            marginTop: '4px',
+                            color: '#cc0000',
+                            fontWeight: 'bold'
+                          }}>
+                            ⚠️ לא הוכנס מספר סחרן
+                          </div>
+                        )}
                       </div>
                     </>
                   ) : activity.activityType === 'mant' ? (

@@ -628,6 +628,12 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                             <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#667eea', fontSize: '16px' }}>
                               🚗 {va.vehicle}
                             </div>
+                            {va.departureTime && (
+                              <div style={{ marginBottom: '10px', padding: '8px', background: '#fff9e6', borderRadius: '6px' }}>
+                                <span style={{ fontWeight: 'bold', color: '#667eea' }}>שעת יציאה: </span>
+                                <span>{va.departureTime}</span>
+                              </div>
+                            )}
                             {va.passengersOutbound && va.passengersOutbound.length > 0 && (
                               <div style={{ marginBottom: '8px', padding: '8px', background: '#f0f8ff', borderRadius: '6px' }}>
                                 <span style={{ color: '#0066cc', fontWeight: 'bold' }}>➡️ הלוך: </span>
@@ -671,6 +677,10 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                           <div>{activity.additionalFactorsOnSite || '-'}</div>
                         </div>
                         <div>
+                          <strong style={{ color: '#667eea' }}>לו"ז כללי:</strong>
+                          <div style={{ whiteSpace: 'pre-wrap', textAlign: 'right', direction: 'rtl' }}>{activity.generalSchedule || '-'}</div>
+                        </div>
+                        <div>
                           <strong style={{ color: '#667eea' }}>מספר זנב:</strong>
                           <div>{activity.tailNumber || '-'}</div>
                         </div>
@@ -693,6 +703,11 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         <div>
                           <strong style={{ color: '#667eea' }}>מספר סחרן:</strong>
                           <div>{activity.serialNumber || '-'}</div>
+                          {activity.type === 'אווירי' && !activity.serialNumber && (
+                            <div style={{ marginTop: '5px', padding: '8px', background: '#ffcccc', borderRadius: '5px', color: '#cc0000', fontSize: '13px', fontWeight: 'bold' }}>
+                              ⚠️ לא הוכנס מספר סחרן
+                            </div>
+                          )}
                         </div>
                         <div>
                           <strong style={{ color: '#667eea' }}>תדרים רלוונטיים:</strong>
@@ -713,6 +728,11 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                                   <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#667eea' }}>
                                     🚗 {va.vehicle}
                                   </div>
+                                  {va.departureTime && (
+                                    <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+                                      <span style={{ fontWeight: 'bold', color: '#667eea' }}>שעת יציאה:</span> {va.departureTime}
+                                    </div>
+                                  )}
                                   {va.passengersOutbound && va.passengersOutbound.length > 0 && (
                                     <div style={{ marginBottom: '5px' }}>
                                       <span style={{ color: '#0066cc', fontWeight: 'bold' }}>הלוך: </span>
@@ -736,7 +756,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                         )}
                         <div>
                           <strong style={{ color: '#667eea' }}>הערות:</strong>
-                          <div>{activity.notes || '-'}</div>
+                          <div style={{ whiteSpace: 'pre-wrap' }}>{activity.notes || '-'}</div>
                         </div>
                       </div>
                     </td>
@@ -868,6 +888,11 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                     <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#667eea' }}>
                       🚗 {va.vehicle}
                     </div>
+                    {va.departureTime && (
+                      <div style={{ marginBottom: '6px', fontSize: '14px' }}>
+                        <span style={{ fontWeight: 'bold', color: '#667eea' }}>שעת יציאה:</span> {va.departureTime}
+                      </div>
+                    )}
                     {va.passengersOutbound && va.passengersOutbound.length > 0 && (
                       <div style={{ marginBottom: '4px', fontSize: '14px' }}>
                         <span style={{ color: '#0066cc', fontWeight: 'bold' }}>➡️ הלוך: </span>
@@ -950,6 +975,10 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                   <div>{activity.additionalFactorsOnSite || '-'}</div>
                 </div>
                 <div style={{ marginBottom: '10px' }}>
+                  <strong style={{ color: '#667eea' }}>לו"ז כללי:</strong>
+                  <div style={{ whiteSpace: 'pre-wrap', textAlign: 'right', direction: 'rtl' }}>{activity.generalSchedule || '-'}</div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
                   <strong style={{ color: '#667eea' }}>מספר זנב:</strong>
                   <div>{activity.tailNumber || '-'}</div>
                 </div>
@@ -972,6 +1001,11 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                 <div style={{ marginBottom: '10px' }}>
                   <strong style={{ color: '#667eea' }}>מספר סחרן:</strong>
                   <div>{activity.serialNumber || '-'}</div>
+                  {activity.type === 'אווירי' && !activity.serialNumber && (
+                    <div style={{ marginTop: '5px', padding: '8px', background: '#ffcccc', borderRadius: '5px', color: '#cc0000', fontSize: '13px', fontWeight: 'bold' }}>
+                      ⚠️ לא הוכנס מספר סחרן
+                    </div>
+                  )}
                 </div>
                 <div style={{ marginBottom: '10px' }}>
                   <strong style={{ color: '#667eea' }}>תדרים רלוונטיים:</strong>
@@ -992,6 +1026,11 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                           <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#667eea' }}>
                             🚗 {va.vehicle}
                           </div>
+                          {va.departureTime && (
+                            <div style={{ marginBottom: '8px', fontSize: '14px' }}>
+                              <span style={{ fontWeight: 'bold', color: '#667eea' }}>שעת יציאה:</span> {va.departureTime}
+                            </div>
+                          )}
                           {va.passengersOutbound && va.passengersOutbound.length > 0 && (
                             <div style={{ marginBottom: '5px' }}>
                               <span style={{ color: '#0066cc', fontWeight: 'bold' }}>הלוך: </span>
@@ -1015,7 +1054,7 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                 )}
                 <div>
                   <strong style={{ color: '#667eea' }}>הערות:</strong>
-                  <div>{activity.notes || '-'}</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{activity.notes || '-'}</div>
                 </div>
               </div>
             )}
@@ -1295,6 +1334,11 @@ function DailyPlan({ day, activities, onBack, isManager, onUpdateActivity, onDel
                     }}>
                       🚗 {va.vehicle}
                     </div>
+                    {va.departureTime && (
+                      <div style={{ marginBottom: '12px', padding: '10px', background: 'white', borderRadius: '8px' }}>
+                        <span style={{ fontWeight: 'bold', color: '#667eea', fontSize: '15px' }}>שעת יציאה:</span> <span style={{ fontSize: '15px' }}>{va.departureTime}</span>
+                      </div>
+                    )}
                     {va.passengersOutbound && va.passengersOutbound.length > 0 && (
                       <div style={{ marginBottom: '10px', padding: '10px', background: 'white', borderRadius: '8px' }}>
                         <span style={{ color: '#0066cc', fontWeight: 'bold', fontSize: '15px' }}>➡️ הלוך: </span>

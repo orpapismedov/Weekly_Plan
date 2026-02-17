@@ -19,6 +19,7 @@ function ActivityModal({ day, activity, onSave, onClose }) {
   const [projectNumbers, setProjectNumbers] = useState(defaultProjectNumbers);
   const [workSites, setWorkSites] = useState(defaultWorkSites);
   const [vehicles, setVehicles] = useState(defaultVehicles);
+  const [dealerNumbers, setDealerNumbers] = useState([]); // NEW: טבלת מספרי סחרן
   
   // Load field lists from Firebase on component mount
   useEffect(() => {
@@ -39,6 +40,22 @@ function ActivityModal({ day, activity, onSave, onClose }) {
       }
     };
     loadFieldLists();
+  }, []);
+
+  // Load dealer numbers from Firebase
+  useEffect(() => {
+    const loadDealerNumbers = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'dealerNumbers');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setDealerNumbers(docSnap.data().items || []);
+        }
+      } catch (error) {
+        console.error('Error loading dealer numbers:', error);
+      }
+    };
+    loadDealerNumbers();
   }, []);
 
   // Save field lists to Firebase whenever they change
@@ -131,6 +148,7 @@ function ActivityModal({ day, activity, onSave, onClose }) {
     vehiclesList: [], // Changed to array for multiple vehicles
     distribution: '',
     additionalFactorsOnSite: '', // NEW: גורמים נוספים באתר
+    generalSchedule: '', // NEW: לו"ז כללי
     notes: '',
     heilan: 'שטח', // NEW: חילן field - default שטח
     // Daily plan extra fields - NEW STRUCTURE
@@ -194,6 +212,15 @@ function ActivityModal({ day, activity, onSave, onClose }) {
       } else if (value === 'קרקעי') {
         updates.heilan = 'משרד';
       }
+    }
+    
+    // Auto-fill serial number when tail number changes
+    if (name === 'tailNumber') {
+      const matchingDealer = dealerNumbers.find(item => item.tailNumber === value);
+      if (matchingDealer) {
+        updates.serialNumber = matchingDealer.dealerNumber;
+      }
+      // If no match, leave serialNumber as is (user can edit manually)
     }
     
     setFormData(prev => ({
@@ -299,6 +326,7 @@ function ActivityModal({ day, activity, onSave, onClose }) {
   const handleAddVehicleAssignment = () => {
     setVehicleAssignments([...vehicleAssignments, {
       vehicle: '',
+      departureTime: '',  // NEW: שעת יציאה
       passengersOutbound: [],  // הלוך
       passengersReturn: []      // חזור
     }]);
@@ -559,22 +587,26 @@ function ActivityModal({ day, activity, onSave, onClose }) {
             <div className="form-group">
               <label>שעת התחלה</label>
               <input
-                type="time"
+                type="text"
                 name="startTime"
                 value={formData.startTime}
                 onChange={handleChange}
-                step="60"
+                placeholder="09:00"
+                pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                title="הכנס שעה בפורמט 00:00-23:59"
               />
             </div>
 
             <div className="form-group">
               <label>שעת סיום</label>
               <input
-                type="time"
+                type="text"
                 name="endTime"
                 value={formData.endTime}
                 onChange={handleChange}
-                step="60"
+                placeholder="18:00"
+                pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                title="הכנס שעה בפורמט 00:00-23:59"
               />
             </div>
           </div>
@@ -1258,12 +1290,24 @@ function ActivityModal({ day, activity, onSave, onClose }) {
           </div>
 
           <div className="form-group">
+            <label>לו"ז כללי</label>
+            <textarea
+              name="generalSchedule"
+              value={formData.generalSchedule}
+              onChange={handleChange}
+              placeholder='לו"ז כללי'
+              style={{ whiteSpace: 'pre-wrap' }}
+            />
+          </div>
+
+          <div className="form-group">
             <label>הערות</label>
             <textarea
               name="notes"
               value={formData.notes}
               onChange={handleChange}
               placeholder="הערות נוספות"
+              style={{ whiteSpace: 'pre-wrap' }}
             />
           </div>
 
@@ -1282,12 +1326,13 @@ function ActivityModal({ day, activity, onSave, onClose }) {
                 <div className="form-group">
                   <label>זמן המראה משוער</label>
                   <input
-                    type="time"
+                    type="text"
                     name="estimatedTakeoffTime"
                     value={formData.estimatedTakeoffTime}
                     onChange={handleChange}
-                    placeholder="זמן המראה"
-                    step="60"
+                    placeholder="10:00"
+                    pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                    title="הכנס שעה בפורמט 00:00-23:59"
                   />
                 </div>
               )}
@@ -1449,6 +1494,19 @@ function ActivityModal({ day, activity, onSave, onClose }) {
                         <option key={v} value={v}>{v}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: 'bold' }}>שעת יציאה:</label>
+                    <input
+                      type="text"
+                      value={assignment.departureTime || ''}
+                      onChange={(e) => handleVehicleAssignmentChange(index, 'departureTime', e.target.value)}
+                      placeholder="09:00"
+                      pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]"
+                      title="הכנס שעה בפורמט 00:00-23:59"
+                      style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '14px' }}
+                    />
                   </div>
 
                   {assignment.vehicle && (
