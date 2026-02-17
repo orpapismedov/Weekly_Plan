@@ -594,7 +594,7 @@ function App() {
               src={`${process.env.PUBLIC_URL}/aeronautics-logo-login.png`}
               alt="Aeronautics Logo" 
               style={{
-                height: '110px',
+                height: '94px',
                 width: 'auto',
                 marginBottom: '20px'
               }}
