@@ -112,6 +112,27 @@ function App() {
     activities: initializeWeekActivities()
   });
 
+  // Prevent body scroll when password screen is showing
+  useEffect(() => {
+    if (!isAuthenticated) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+    };
+  }, [isAuthenticated]);
+
   // Load initial data from Firebase
   useEffect(() => {
     const initializeData = async () => {
@@ -547,13 +568,18 @@ function App() {
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           background: 'linear-gradient(135deg, #ff6347 0%, #dc2626 25%, #1a1a1a 75%, #000000 100%)',
-          zIndex: 9999
+          zIndex: 9999,
+          overflow: 'hidden',
+          WebkitOverflowScrolling: 'touch'
         }}>
           <div style={{
             background: 'white',
@@ -565,10 +591,10 @@ function App() {
             textAlign: 'center'
           }}>
             <img 
-              src={`${process.env.PUBLIC_URL}/aeronautics-logo.svg`}
+              src={`${process.env.PUBLIC_URL}/aeronautics-logo-login.png`}
               alt="Aeronautics Logo" 
               style={{
-                height: '80px',
+                height: '110px',
                 width: 'auto',
                 marginBottom: '20px'
               }}
@@ -576,16 +602,14 @@ function App() {
                 e.target.style.display = 'none';
               }}
             />
-            <h2 style={{ 
-              marginBottom: '10px',
-              color: '#333',
-              fontSize: '24px'
-            }}>🔒 גישה מוגבלת</h2>
-            <p style={{ 
+            <h1 style={{ 
               marginBottom: '25px',
-              color: '#666',
-              fontSize: '16px'
-            }}>תכנון פעילות שבועית - מבצעי אוויר</p>
+              color: '#333',
+              fontSize: window.innerWidth >= 768 ? '26px' : '18px',
+              fontWeight: 'bold'
+            }}>
+              תכנון פעילות שבועית<br/>קו טיסה
+            </h1>
             <div style={{ position: 'relative', marginBottom: '15px' }}>
               <input
                 type={showPassword ? "text" : "password"}
@@ -680,8 +704,7 @@ function App() {
               color: '#999',
               fontSize: '12px'
             }}>
-              יש לך סיסמת מנהל או סיסמת משתמש<br/>
-              לצפייה בלבד, הכנס את סיסמת המשתמש
+              הזן סיסמת עובד לצורך צפייה או סיסמת מנהל לצורך עריכה
             </p>
           </div>
         </div>
