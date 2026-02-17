@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/Weekly_Plan/static/css/main.4efbab63.css",
-    "main.js": "/Weekly_Plan/static/js/main.931b4f54.js",
+    "main.js": "/Weekly_Plan/static/js/main.e4de9bb5.js",
     "static/js/453.485dcc40.chunk.js": "/Weekly_Plan/static/js/453.485dcc40.chunk.js",
     "index.html": "/Weekly_Plan/index.html",
     "main.4efbab63.css.map": "/Weekly_Plan/static/css/main.4efbab63.css.map",
-    "main.931b4f54.js.map": "/Weekly_Plan/static/js/main.931b4f54.js.map",
+    "main.e4de9bb5.js.map": "/Weekly_Plan/static/js/main.e4de9bb5.js.map",
     "453.485dcc40.chunk.js.map": "/Weekly_Plan/static/js/453.485dcc40.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.4efbab63.css",
-    "static/js/main.931b4f54.js"
+    "static/js/main.e4de9bb5.js"
   ]
 }
